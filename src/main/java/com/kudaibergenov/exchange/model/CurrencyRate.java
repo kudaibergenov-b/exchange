@@ -3,32 +3,43 @@ package com.kudaibergenov.exchange.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "currency_rates")
+@Table(name = "currency_rates", uniqueConstraints = @UniqueConstraint(columnNames = {"date", "currencyCode"}))
 public class CurrencyRate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private LocalDateTime createdAt;
-    private Double usd;
-    private Double eur;
-    private Double rub;
-    private Double kzt;
+    private LocalDate date;
+    private String currencyCode;
+    private Double rate;
 
-    public CurrencyRate(LocalDateTime createdAt, Double usd, Double eur, Double rub, Double kzt) {
-        this.createdAt = createdAt;
-        this.usd = usd;
-        this.eur = eur;
-        this.rub = rub;
-        this.kzt = kzt;
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public String getCurrencyCode() {
+        return currencyCode;
+    }
+
+    public void setCurrencyCode(String currencyCode) {
+        this.currencyCode = currencyCode;
+    }
+
+    public Double getRate() {
+        return rate;
+    }
+
+    public void setRate(Double rate) {
+        this.rate = rate;
     }
 }
-
-

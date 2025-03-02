@@ -2,49 +2,37 @@ package com.kudaibergenov.exchange.service;
 
 import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.repository.CurrencyRateRepository;
-import org.springframework.http.*;
+import com.kudaibergenov.exchange.util.CurrencyXmlParser;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.beans.factory.annotation.Value;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Map;
 
 @Service
 public class CurrencyService {
 
     private final CurrencyRateRepository repository;
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    @Value("${fxkg.api.url}")
-    private String apiUrl;
-
-    @Value("${fxkg.api.token}")
-    private String apiToken;
-
 
     public CurrencyService(CurrencyRateRepository repository) {
         this.repository = repository;
     }
 
-    public void fetchAndSaveRates() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiToken);
-        HttpEntity<String> entity = new HttpEntity<>(headers);
+    public void fetchAndSaveHistoricalRates(LocalDate startDate, LocalDate endDate) {
+        LocalDate date = startDate;
 
-        ResponseEntity<Map> response = restTemplate.exchange(apiUrl, HttpMethod.GET, entity, Map.class);
-        Map<String, Object> rates = response.getBody();
+        while (!date.isAfter(endDate)) {
+            System.out.println("Fetching rates for: " + date);
+            Map<String, Double> rates = CurrencyXmlParser.fetchRates(date.toString());
 
-        if (rates != null) {
-            CurrencyRate currencyRate = new CurrencyRate(
-                    LocalDateTime.now(),
-                    Double.parseDouble(rates.get("usd").toString()),
-                    Double.parseDouble(rates.get("eur").toString()),
-                    Double.parseDouble(rates.get("rub").toString()),
-                    Double.parseDouble(rates.get("kzt").toString())
-            );
+            for (Map.Entry<String, Double> entry : rates.entrySet()) {
+                CurrencyRate currencyRate = new CurrencyRate();
+                currencyRate.setDate(date);
+                currencyRate.setCurrencyCode(entry.getKey());
+                currencyRate.setRate(entry.getValue());
 
-            repository.save(currencyRate);
-            System.out.println("Saved new currency rates: " + currencyRate);
+                repository.save(currencyRate);
+            }
+            date = date.plusDays(1); // Переход на следующий день
         }
+        System.out.println("Historical rates saved successfully!");
     }
 }
