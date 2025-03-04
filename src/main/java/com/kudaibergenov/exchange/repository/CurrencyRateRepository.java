@@ -10,6 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, Long> {
-    Optional<CurrencyRate> findTopByOrderByDateDesc();
+    Optional<CurrencyRate> findByDateAndCurrencyCode(LocalDate date, String currencyCode);
+    List<CurrencyRate> findByDate(LocalDate date);
     List<CurrencyRate> findByDateBetween(LocalDate start, LocalDate end);
 }

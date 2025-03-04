@@ -4,10 +4,12 @@ import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.repository.CurrencyRateRepository;
 import com.kudaibergenov.exchange.service.CurrencyService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/currency")
@@ -21,32 +23,40 @@ public class CurrencyController {
         this.currencyService = currencyService;
     }
 
-    @GetMapping("/latest")
-    public CurrencyRate getLatestRate() {
-        return repository.findTopByOrderByDateDesc()
-                .orElseThrow(() -> new RuntimeException("No currency rates found"));
-    }
-
-    @GetMapping("/history")
-    public List<CurrencyRate> getHistory(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
-    ) {
-        return repository.findByDateBetween(start, end);
-    }
-
-    @PostMapping("/fetch-historical")
-    public String fetchHistoricalRates(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
-    ) {
-        currencyService.fetchAndSaveHistoricalRates(start, end);
-        return "Historical data fetched and saved from " + start + " to " + end;
-    }
-
     @PostMapping("/import-excel")
     public String importExcelData(@RequestParam String filePath) {
         currencyService.importFromExcel(filePath);
         return "Excel data imported from: " + filePath;
+    }
+
+    @GetMapping("/rates/{date}")
+    public ResponseEntity<List<CurrencyRate>> getRatesByDate(
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<CurrencyRate> rates = repository.findByDate(date);
+        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<CurrencyRate>> getHistory(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        List<CurrencyRate> rates = repository.findByDateBetween(start, end);
+        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
+    }
+
+    @PostMapping("/add")
+    public ResponseEntity<String> addCurrencyRate(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam String currencyCode,
+            @RequestParam Double rate) {
+
+        Optional<CurrencyRate> existingRate = repository.findByDateAndCurrencyCode(date, currencyCode);
+        if (existingRate.isPresent()) {
+            return ResponseEntity.badRequest().body("Rate for " + currencyCode + " on " + date + " already exists!");
+        }
+
+        CurrencyRate newRate = new CurrencyRate(date, currencyCode, rate);
+        repository.save(newRate);
+        return ResponseEntity.ok("Added new currency rate: " + newRate);
     }
 }

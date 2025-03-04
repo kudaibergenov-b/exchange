@@ -18,6 +18,6 @@ public class CurrencyScheduler {
     @Scheduled(cron = "0 0 12 * * ?", zone = "Asia/Bishkek") // Каждый день в 12:00
     public void updateRates() {
         System.out.println("Fetching latest currency rates...");
-        currencyService.fetchAndSaveHistoricalRates(LocalDate.now(), LocalDate.now());
+        //currencyService.fetchAndSaveHistoricalRates(LocalDate.now(), LocalDate.now());
     }
 }

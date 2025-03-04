@@ -11,8 +11,7 @@ import java.io.FileInputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 
 @Component
 public class ExcelImporter {
@@ -34,21 +33,21 @@ public class ExcelImporter {
                     Row row = sheet.getRow(rowIndex);
                     if (row == null) continue;
 
+                    //  Проверяем, является ли ячейка датой
                     Cell dateCell = row.getCell(0);
                     if (dateCell == null || !isValidDateCell(dateCell)) {
                         System.out.println("Пропущена строка " + rowIndex + " - невалидная дата");
                         continue;
                     }
 
+                    //  Преобразуем дату
                     LocalDate date = getCellAsDate(dateCell);
 
-                    List<CurrencyRate> rates = new ArrayList<>();
-                    rates.add(new CurrencyRate(date, "USD", getCellValueAsDouble(row.getCell(1))));
-                    rates.add(new CurrencyRate(date, "EUR", getCellValueAsDouble(row.getCell(2))));
-                    rates.add(new CurrencyRate(date, "RUB", getCellValueAsDouble(row.getCell(3))));
-                    rates.add(new CurrencyRate(date, "KZT", getCellValueAsDouble(row.getCell(4))));
-
-                    repository.saveAll(rates);
+                    //  Читаем и сохраняем курсы валют (с проверкой дубликатов)
+                    saveOrUpdateRate(date, "USD", row.getCell(1));
+                    saveOrUpdateRate(date, "EUR", row.getCell(2));
+                    saveOrUpdateRate(date, "RUB", row.getCell(3));
+                    saveOrUpdateRate(date, "KZT", row.getCell(4));
                 }
             }
 
@@ -58,16 +57,39 @@ public class ExcelImporter {
         }
     }
 
+    //  Метод для обновления существующей записи или вставки новой
+    private void saveOrUpdateRate(LocalDate date, String currencyCode, Cell cell) {
+        if (cell == null) return; // Пропускаем пустые значения
+
+        double rate = getCellValueAsDouble(cell);
+        if (rate == 0.0) return; // Пропускаем нулевые значения
+
+        Optional<CurrencyRate> existingRate = repository.findByDateAndCurrencyCode(date, currencyCode);
+
+        if (existingRate.isPresent()) {
+            CurrencyRate updatedRate = existingRate.get();
+            updatedRate.setRate(rate);
+            repository.save(updatedRate); // Обновляем существующую запись
+            System.out.println("Обновлен курс: " + updatedRate);
+        } else {
+            CurrencyRate newRate = new CurrencyRate(date, currencyCode, rate);
+            repository.save(newRate); // Вставляем новую запись
+            System.out.println("Добавлен новый курс: " + newRate);
+        }
+    }
+
+    //  Проверяем, является ли ячейка датой
     private boolean isValidDateCell(Cell cell) {
         if (cell.getCellType() == CellType.NUMERIC) {
-            return DateUtil.isCellDateFormatted(cell); // Проверяем, содержит ли ячейка дату
+            return DateUtil.isCellDateFormatted(cell);
         } else if (cell.getCellType() == CellType.STRING) {
             String text = cell.getStringCellValue().trim();
-            return text.matches("\\d{2}\\.\\d{2}\\.\\d{2}"); // Проверяем формат "dd.MM.yy"
+            return text.matches("\\d{2}\\.\\d{2}\\.\\d{2}");
         }
         return false;
     }
 
+    //  Преобразуем ячейку в `LocalDate`
     private LocalDate getCellAsDate(Cell cell) {
         if (cell.getCellType() == CellType.NUMERIC) {
             return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
@@ -76,6 +98,7 @@ public class ExcelImporter {
         }
     }
 
+    //  Безопасное получение `double`
     private double getCellValueAsDouble(Cell cell) {
         if (cell == null) return 0.0;
         return cell.getCellType() == CellType.NUMERIC ? cell.getNumericCellValue() : 0.0;

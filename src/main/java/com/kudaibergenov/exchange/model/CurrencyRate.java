@@ -14,8 +14,14 @@ public class CurrencyRate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
+    @Getter
     private LocalDate date;
+    @Setter
+    @Getter
     private String currencyCode;
+
+    @Getter
     private Double rate;
 
     public CurrencyRate() {}
@@ -24,26 +30,6 @@ public class CurrencyRate {
         this.date = date;
         this.currencyCode = currencyCode;
         this.rate = rate;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public String getCurrencyCode() {
-        return currencyCode;
-    }
-
-    public void setCurrencyCode(String currencyCode) {
-        this.currencyCode = currencyCode;
-    }
-
-    public Double getRate() {
-        return rate;
     }
 
     public void setRate(Double rate) {
