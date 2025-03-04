@@ -21,14 +21,12 @@ public class CurrencyController {
         this.currencyService = currencyService;
     }
 
-    // ✅ Получение последнего курса валют
     @GetMapping("/latest")
     public CurrencyRate getLatestRate() {
         return repository.findTopByOrderByDateDesc()
                 .orElseThrow(() -> new RuntimeException("No currency rates found"));
     }
 
-    // ✅ Получение исторических данных за период
     @GetMapping("/history")
     public List<CurrencyRate> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
@@ -37,7 +35,6 @@ public class CurrencyController {
         return repository.findByDateBetween(start, end);
     }
 
-    // 🔲 Запуск парсинга и сохранения исторических данных
     @PostMapping("/fetch-historical")
     public String fetchHistoricalRates(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
@@ -45,5 +42,11 @@ public class CurrencyController {
     ) {
         currencyService.fetchAndSaveHistoricalRates(start, end);
         return "Historical data fetched and saved from " + start + " to " + end;
+    }
+
+    @PostMapping("/import-excel")
+    public String importExcelData(@RequestParam String filePath) {
+        currencyService.importFromExcel(filePath);
+        return "Excel data imported from: " + filePath;
     }
 }

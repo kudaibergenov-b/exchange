@@ -6,7 +6,6 @@ import lombok.*;
 import java.time.LocalDate;
 
 @Entity
-@NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "currency_rates", uniqueConstraints = @UniqueConstraint(columnNames = {"date", "currencyCode"}))
 public class CurrencyRate {
@@ -18,6 +17,14 @@ public class CurrencyRate {
     private LocalDate date;
     private String currencyCode;
     private Double rate;
+
+    public CurrencyRate() {}
+
+    public CurrencyRate(LocalDate date, String currencyCode, double rate) {
+        this.date = date;
+        this.currencyCode = currencyCode;
+        this.rate = rate;
+    }
 
     public LocalDate getDate() {
         return date;
