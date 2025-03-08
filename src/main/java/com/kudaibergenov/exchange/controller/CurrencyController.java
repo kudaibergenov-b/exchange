@@ -44,6 +44,12 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
+    // ✅ Получить исторические курсы за последние N дней
+    @GetMapping("/history/{currency}/{days}")
+    public List<CurrencyRate> getHistoricalRates(@PathVariable String currency, @PathVariable int days) {
+        return currencyService.getHistoricalRates(currency, days);
+    }
+
     @PostMapping("/add")
     public ResponseEntity<String> addCurrencyRate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
