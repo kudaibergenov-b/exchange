@@ -65,4 +65,10 @@ public class CurrencyController {
         repository.save(newRate);
         return ResponseEntity.ok("Added new currency rate: " + newRate);
     }
+
+    // ✅ Запросить прогноз курса валют
+    @GetMapping("/predict/{currency}/{days}")
+    public List<CurrencyRate> getPrediction(@PathVariable String currency, @PathVariable int days) {
+        return currencyService.predictExchangeRate(currency, days);
+    }
 }

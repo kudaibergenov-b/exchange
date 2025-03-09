@@ -8,6 +8,97 @@ import java.util.stream.DoubleStream;
 
 public class ArimaModel {
 
+    // ✅ Финальная модель ARIMA
+    public static double[] predict(List<BigDecimal> data, int days) {
+        // Определяем лучшие параметры p, d, q
+        int[] bestParams = findBestParams(data);
+        int p = bestParams[0];
+        int d = bestParams[1];
+        int q = bestParams[2];
+
+        // Применяем дифференцирование (если d > 0)
+        List<BigDecimal> differenced = data;
+        for (int i = 0; i < d; i++) {
+            differenced = TimeSeriesProcessor.difference(differenced);
+        }
+
+        // Вычисляем AR и MA коэффициенты
+        double[] arCoefficients = calculateAR(differenced, p);
+        double[] maCoefficients = calculateMA(differenced, q);
+
+        // Прогнозируем N будущих значений
+        double[] predictions = new double[days];
+        for (int i = 0; i < days; i++) {
+            predictions[i] = predictNext(differenced, arCoefficients, maCoefficients);
+            differenced.add(BigDecimal.valueOf(predictions[i])); // Добавляем прогноз в данные
+        }
+
+        // Восстанавливаем данные (если d > 0)
+        if (d > 0) {
+            predictions = restorePredictions(predictions, data.get(data.size() - 1).doubleValue());
+        }
+
+        return predictions;
+    }
+
+    // ✅ Метод для восстановления данных после разностей
+    private static double[] restorePredictions(double[] differenced, double lastValue) {
+        double[] restored = new double[differenced.length];
+        double value = lastValue;
+        for (int i = 0; i < differenced.length; i++) {
+            value += differenced[i];
+            restored[i] = value;
+        }
+        return restored;
+    }
+
+    // ✅ Метод для подбора оптимальных p, d, q
+    public static int[] findBestParams(List<BigDecimal> data) {
+        int bestP = 0, bestD = 0, bestQ = 0;
+        double bestError = Double.MAX_VALUE;
+
+        int maxP = Math.min(3, data.size() - 2);
+        int maxD = Math.min(2, data.size() - 1);
+        int maxQ = Math.min(3, data.size() - 2);
+
+        for (int p = 0; p <= maxP; p++) {
+            for (int d = 0; d <= maxD; d++) {
+                for (int q = 0; q <= maxQ; q++) {
+                    try {
+                        double error = testModel(data, p, d, q);
+                        if (error < bestError) {
+                            bestError = error;
+                            bestP = p;
+                            bestD = d;
+                            bestQ = q;
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Ошибка при p=" + p + ", d=" + d + ", q=" + q + ": " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        return new int[]{bestP, bestD, bestQ};
+    }
+
+
+    // ✅ Тестируем модель с разными p, d, q
+    private static double testModel(List<BigDecimal> data, int p, int d, int q) {
+        List<BigDecimal> differenced = data;
+        for (int i = 0; i < d; i++) {
+            differenced = TimeSeriesProcessor.difference(differenced);
+        }
+
+        double[] arCoefficients = calculateAR(differenced, p);
+        double[] maCoefficients = calculateMA(differenced, q);
+
+        double prediction = predictNext(differenced, arCoefficients, maCoefficients);
+        double actual = data.get(data.size() - 1).doubleValue();
+
+        return Math.abs(prediction - actual);
+    }
+
     // ✅ Авторегрессия (AR)
     public static double[] calculateAR(List<BigDecimal> data, int p) {
         int n = data.size();
@@ -30,8 +121,11 @@ public class ArimaModel {
         return regression.estimateRegressionParameters();
     }
 
-    // ✅ Скользящее среднее (MA)
     public static double[] calculateMA(List<BigDecimal> data, int q) {
+        if (data.size() < q + 1) {
+            throw new IllegalArgumentException("Недостаточно данных для MA(q). Нужно как минимум " + (q + 1) + " точек.");
+        }
+
         List<Double> errors = new ArrayList<>();
         for (int i = 1; i < data.size(); i++) {
             double error = data.get(i).doubleValue() - data.get(i - 1).doubleValue();
@@ -39,7 +133,7 @@ public class ArimaModel {
         }
 
         if (errors.size() < q) {
-            throw new IllegalArgumentException("Недостаточно данных для MA(q)");
+            throw new IllegalArgumentException("Недостаточно ошибок для MA(q)");
         }
 
         double[] y = new double[errors.size() - q];
@@ -104,6 +198,7 @@ public class ArimaModel {
     }
 
     public static void main(String[] args) {
+        // ✅ Исторические курсы USD
         List<BigDecimal> rates = List.of(
                 new BigDecimal("87.45"),
                 new BigDecimal("87.60"),
@@ -112,15 +207,29 @@ public class ArimaModel {
                 new BigDecimal("88.12"),
                 new BigDecimal("88.30"),
                 new BigDecimal("88.45"),
-                new BigDecimal("88.60")
+                new BigDecimal("88.60"),
+                new BigDecimal("88.75"),
+                new BigDecimal("88.92"),
+                new BigDecimal("89.10"),
+                new BigDecimal("89.30")
         );
 
-        // ✅ 1. Применяем разности (d=1)
-        List<BigDecimal> differenced = difference(rates);
-        System.out.println("Первая разность (d=1): " + differenced);
+        // ✅ Определяем параметры ARIMA (p, d, q)
+        int[] bestParams = findBestParams(rates);
+        int p = bestParams[0];
+        int d = bestParams[1];
+        int q = bestParams[2];
+        System.out.println("Оптимальные параметры ARIMA(p, d, q): " + p + ", " + d + ", " + q);
 
-        // ✅ 2. Восстанавливаем данные
-        List<BigDecimal> restored = restore(differenced, rates.get(0));
-        System.out.println("Восстановленные данные: " + restored);
+        // ✅ Прогнозируем курс на 5 дней вперед
+        int daysToPredict = 5;
+        double[] predictions = predict(rates, daysToPredict);
+
+        // ✅ Выводим прогноз
+        System.out.println("Прогнозируемые курсы USD на следующие " + daysToPredict + " дней:");
+        for (int i = 0; i < daysToPredict; i++) {
+            System.out.println("День " + (i + 1) + ": " + predictions[i]);
+        }
     }
+
 }
