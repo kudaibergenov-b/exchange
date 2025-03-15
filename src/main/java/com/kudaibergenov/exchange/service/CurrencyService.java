@@ -35,27 +35,31 @@ public class CurrencyService {
     }
 
     public List<CurrencyRate> predictExchangeRate(String currency, int days) {
-        // Получаем исторические данные
-        List<CurrencyRate> historicalRates = getHistoricalRates(currency, 90);
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(90);
 
-        // Если данных мало, прогноз невозможен
-        if (historicalRates.size() < 2) {
+        List<CurrencyRate> historicalRates = repository.findByDateBetweenAndCurrencyCode(startDate, endDate, currency);
+
+        if (historicalRates.size() < 10) {
             throw new IllegalStateException("Недостаточно данных для прогнозирования");
         }
 
-        // Извлекаем курсы валют (rate) и конвертируем в BigDecimal
         List<BigDecimal> rates = historicalRates.stream()
-                .map(rate -> BigDecimal.valueOf(rate.getRate())) // ✅ Преобразуем double → BigDecimal
+                .map(rate -> BigDecimal.valueOf(rate.getRate())) // ✅ Явное преобразование Double → BigDecimal
                 .collect(Collectors.toList());
 
-        // Прогнозируем на N дней вперед
         double[] predictions = ArimaModel.predict(rates, days);
+        LocalDate predictionDate = endDate.plusDays(1);
 
-        // Создаем список прогнозов с датами
-        LocalDate startDate = LocalDate.now().plusDays(1);
+        // ✅ Добавляем дату и валюту в результат
         return IntStream.range(0, days)
-                .mapToObj(i -> new CurrencyRate(startDate.plusDays(i), currency, predictions[i]))
+                .mapToObj(i -> new CurrencyRate(
+                        predictionDate.plusDays(i), // Дата прогноза
+                        currency,                   // Код валюты
+                        predictions[i]               // Прогнозируемый курс
+                ))
                 .collect(Collectors.toList());
     }
+
 
 }

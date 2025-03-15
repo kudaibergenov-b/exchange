@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,7 +69,14 @@ public class CurrencyController {
 
     // ✅ Запросить прогноз курса валют
     @GetMapping("/predict/{currency}/{days}")
-    public List<CurrencyRate> getPrediction(@PathVariable String currency, @PathVariable int days) {
-        return currencyService.predictExchangeRate(currency, days);
+    public ResponseEntity<List<CurrencyRate>> getPrediction(
+            @PathVariable String currency,
+            @PathVariable int days) {
+        try {
+            List<CurrencyRate> predictions = currencyService.predictExchangeRate(currency, days);
+            return ResponseEntity.ok(predictions);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
+        }
     }
 }

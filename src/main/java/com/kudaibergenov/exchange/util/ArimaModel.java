@@ -10,14 +10,16 @@ public class ArimaModel {
 
     // ✅ Финальная модель ARIMA
     public static double[] predict(List<BigDecimal> data, int days) {
+        // ✅ Создаем изменяемый список вместо прямой ссылки
+        List<BigDecimal> differenced = new ArrayList<>(data);
+
         // Определяем лучшие параметры p, d, q
-        int[] bestParams = findBestParams(data);
+        int[] bestParams = findBestParams(differenced);
         int p = bestParams[0];
         int d = bestParams[1];
         int q = bestParams[2];
 
         // Применяем дифференцирование (если d > 0)
-        List<BigDecimal> differenced = data;
         for (int i = 0; i < d; i++) {
             differenced = TimeSeriesProcessor.difference(differenced);
         }
@@ -30,7 +32,7 @@ public class ArimaModel {
         double[] predictions = new double[days];
         for (int i = 0; i < days; i++) {
             predictions[i] = predictNext(differenced, arCoefficients, maCoefficients);
-            differenced.add(BigDecimal.valueOf(predictions[i])); // Добавляем прогноз в данные
+            differenced.add(BigDecimal.valueOf(predictions[i])); // ✅ Теперь add() работает корректно
         }
 
         // Восстанавливаем данные (если d > 0)
