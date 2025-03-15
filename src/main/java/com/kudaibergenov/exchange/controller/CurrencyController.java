@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/currency")
 public class CurrencyController {
+
+    private static final Logger logger = Logger.getLogger(CurrencyController.class.getName());
 
     private final CurrencyRateRepository repository;
     private final CurrencyService currencyService;
@@ -24,12 +26,19 @@ public class CurrencyController {
         this.currencyService = currencyService;
     }
 
+    // ✅ Импорт данных из Excel
     @PostMapping("/import-excel")
-    public String importExcelData(@RequestParam String filePath) {
-        currencyService.importFromExcel(filePath);
-        return "Excel data imported from: " + filePath;
+    public ResponseEntity<String> importExcelData(@RequestParam String filePath) {
+        try {
+            currencyService.importFromExcel(filePath);
+            return ResponseEntity.ok("Excel data successfully imported from: " + filePath);
+        } catch (Exception e) {
+            logger.severe("Ошибка импорта файла: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Ошибка импорта: " + e.getMessage());
+        }
     }
 
+    // ✅ Получить курсы за конкретную дату
     @GetMapping("/rates/{date}")
     public ResponseEntity<List<CurrencyRate>> getRatesByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -37,34 +46,32 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
+    // ✅ Получить курсы за период (start → end)
     @GetMapping("/history")
     public ResponseEntity<List<CurrencyRate>> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+
+        if (start.isAfter(end)) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
+        }
+
         List<CurrencyRate> rates = repository.findByDateBetween(start, end);
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
     // ✅ Получить исторические курсы за последние N дней
     @GetMapping("/history/{currency}/{days}")
-    public List<CurrencyRate> getHistoricalRates(@PathVariable String currency, @PathVariable int days) {
-        return currencyService.getHistoricalRates(currency, days);
-    }
+    public ResponseEntity<List<CurrencyRate>> getHistoricalRates(
+            @PathVariable String currency,
+            @PathVariable int days) {
 
-    @PostMapping("/add")
-    public ResponseEntity<String> addCurrencyRate(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam String currencyCode,
-            @RequestParam Double rate) {
-
-        Optional<CurrencyRate> existingRate = repository.findByDateAndCurrencyCode(date, currencyCode);
-        if (existingRate.isPresent()) {
-            return ResponseEntity.badRequest().body("Rate for " + currencyCode + " on " + date + " already exists!");
+        if (days <= 0) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
         }
 
-        CurrencyRate newRate = new CurrencyRate(date, currencyCode, rate);
-        repository.save(newRate);
-        return ResponseEntity.ok("Added new currency rate: " + newRate);
+        List<CurrencyRate> rates = currencyService.getHistoricalRates(currency, days);
+        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
     // ✅ Запросить прогноз курса валют
@@ -72,10 +79,16 @@ public class CurrencyController {
     public ResponseEntity<List<CurrencyRate>> getPrediction(
             @PathVariable String currency,
             @PathVariable int days) {
+
+        if (days <= 0) {
+            return ResponseEntity.badRequest().body(Collections.emptyList());
+        }
+
         try {
             List<CurrencyRate> predictions = currencyService.predictExchangeRate(currency, days);
             return ResponseEntity.ok(predictions);
         } catch (IllegalStateException e) {
+            logger.warning("Ошибка при прогнозировании для " + currency + ": " + e.getMessage());
             return ResponseEntity.badRequest().body(Collections.emptyList());
         }
     }

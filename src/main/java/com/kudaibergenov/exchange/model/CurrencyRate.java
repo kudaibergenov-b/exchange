@@ -3,53 +3,32 @@ package com.kudaibergenov.exchange.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "currency_rates", uniqueConstraints = @UniqueConstraint(columnNames = {"date", "currencyCode"}))
+@Table(name = "currency_rates", uniqueConstraints = @UniqueConstraint(columnNames = {"date", "currency_code"}))
 public class CurrencyRate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Getter
+    @Column(nullable = false)
     private LocalDate date;
 
-    @Getter
+    @Column(nullable = false, length = 3)
     private String currencyCode;
 
-    private Double rate;
+    @Column(nullable = false, precision = 10, scale = 4)
+    private BigDecimal rate;
 
-    public CurrencyRate() {}
-
-    public CurrencyRate(LocalDate date, String currencyCode, double rate) {
+    public CurrencyRate(LocalDate date, String currencyCode, BigDecimal rate) {
         this.date = date;
         this.currencyCode = currencyCode;
         this.rate = rate;
-    }
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public void setCurrencyCode(String currencyCode) {
-        this.currencyCode = currencyCode;
-    }
-
-    public void setRate(Double rate) {
-        this.rate = rate;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public String getCurrencyCode() {
-        return currencyCode;
-    }
-
-    public Double getRate() {
-        return rate;
     }
 }

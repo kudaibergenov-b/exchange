@@ -4,18 +4,25 @@ import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.repository.CurrencyRateRepository;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @Component
 public class ExcelImporter {
 
+    private static final Logger logger = Logger.getLogger(ExcelImporter.class.getName());
     private final CurrencyRateRepository repository;
 
     public ExcelImporter(CurrencyRateRepository repository) {
@@ -23,84 +30,94 @@ public class ExcelImporter {
     }
 
     public void importData(String filePath) {
-        try (FileInputStream fis = new FileInputStream(new File(filePath));
-             Workbook workbook = new HSSFWorkbook(fis)) {
+        Path path = Paths.get(filePath).toAbsolutePath();
+        logger.info("Начинаем импорт данных из файла: " + path);
+
+        try (FileInputStream fis = new FileInputStream(path.toFile());
+             Workbook workbook = createWorkbook(path.toFile(), fis)) {
 
             for (Sheet sheet : workbook) {
-                System.out.println("Обрабатываем лист: " + sheet.getSheetName());
+                logger.info("Обрабатываем лист: " + sheet.getSheetName());
 
                 for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
                     Row row = sheet.getRow(rowIndex);
                     if (row == null) continue;
 
-                    //  Проверяем, является ли ячейка датой
-                    Cell dateCell = row.getCell(0);
-                    if (dateCell == null || !isValidDateCell(dateCell)) {
-                        System.out.println("Пропущена строка " + rowIndex + " - невалидная дата");
+                    LocalDate date = parseDateCell(row.getCell(0));
+                    if (date == null) {
+                        logger.warning("Пропущена строка " + rowIndex + " - невалидная дата");
                         continue;
                     }
 
-                    //  Преобразуем дату
-                    LocalDate date = getCellAsDate(dateCell);
-
-                    //  Читаем и сохраняем курсы валют (с проверкой дубликатов)
-                    saveOrUpdateRate(date, "USD", row.getCell(1));
-                    saveOrUpdateRate(date, "EUR", row.getCell(2));
-                    saveOrUpdateRate(date, "RUB", row.getCell(3));
-                    saveOrUpdateRate(date, "KZT", row.getCell(4));
+                    processCurrencyRate(date, "USD", row.getCell(1));
+                    processCurrencyRate(date, "EUR", row.getCell(2));
+                    processCurrencyRate(date, "RUB", row.getCell(3));
+                    processCurrencyRate(date, "KZT", row.getCell(4));
                 }
             }
 
-            System.out.println("Импорт завершен!");
+            logger.info("Импорт завершен!");
         } catch (Exception e) {
+            logger.severe("Ошибка импорта: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    //  Метод для обновления существующей записи или вставки новой
-    private void saveOrUpdateRate(LocalDate date, String currencyCode, Cell cell) {
-        if (cell == null) return; // Пропускаем пустые значения
+    private Workbook createWorkbook(File file, FileInputStream fis) throws Exception {
+        if (file.getName().toLowerCase().endsWith(".xls")) {
+            return new HSSFWorkbook(fis);
+        } else if (file.getName().toLowerCase().endsWith(".xlsx")) {
+            return new XSSFWorkbook(fis);
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемый формат файла: " + file.getName());
+        }
+    }
 
-        double rate = getCellValueAsDouble(cell);
-        if (rate == 0.0) return; // Пропускаем нулевые значения
+    private void processCurrencyRate(LocalDate date, String currencyCode, Cell cell) {
+        BigDecimal rate = getCellValueAsBigDecimal(cell);
+        if (rate == null || rate.compareTo(BigDecimal.ZERO) == 0) return;
 
         Optional<CurrencyRate> existingRate = repository.findByDateAndCurrencyCode(date, currencyCode);
 
-        if (existingRate.isPresent()) {
-            CurrencyRate updatedRate = existingRate.get();
-            updatedRate.setRate(rate);
-            repository.save(updatedRate); // Обновляем существующую запись
-            System.out.println("Обновлен курс: " + updatedRate);
-        } else {
-            CurrencyRate newRate = new CurrencyRate(date, currencyCode, rate);
-            repository.save(newRate); // Вставляем новую запись
-            System.out.println("Добавлен новый курс: " + newRate);
-        }
+        CurrencyRate currencyRate = existingRate.orElse(new CurrencyRate(date, currencyCode, BigDecimal.ZERO));
+        currencyRate.setRate(rate);
+        repository.save(currencyRate);
+
+        logger.info((existingRate.isPresent() ? "Обновлен" : "Добавлен") + " курс: " + currencyRate);
     }
 
-    //  Проверяем, является ли ячейка датой
-    private boolean isValidDateCell(Cell cell) {
-        if (cell.getCellType() == CellType.NUMERIC) {
-            return DateUtil.isCellDateFormatted(cell);
-        } else if (cell.getCellType() == CellType.STRING) {
-            String text = cell.getStringCellValue().trim();
-            return text.matches("\\d{2}\\.\\d{2}\\.\\d{2}");
-        }
-        return false;
-    }
+    private LocalDate parseDateCell(Cell cell) {
+        if (cell == null) return null;
 
-    //  Преобразуем ячейку в `LocalDate`
-    private LocalDate getCellAsDate(Cell cell) {
-        if (cell.getCellType() == CellType.NUMERIC) {
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
             return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-        } else {
-            return LocalDate.parse(cell.getStringCellValue().trim(), DateTimeFormatter.ofPattern("dd.MM.yy"));
+        } else if (cell.getCellType() == CellType.STRING) {
+            try {
+                return LocalDate.parse(cell.getStringCellValue().trim(),
+                        DateTimeFormatter.ofPattern("dd.MM.yy", Locale.getDefault()));
+            } catch (Exception e) {
+                logger.warning("Ошибка парсинга даты: " + cell.getStringCellValue());
+                return null;
+            }
         }
+        return null;
     }
 
-    //  Безопасное получение `double`
-    private double getCellValueAsDouble(Cell cell) {
-        if (cell == null) return 0.0;
-        return cell.getCellType() == CellType.NUMERIC ? cell.getNumericCellValue() : 0.0;
+    private BigDecimal getCellValueAsBigDecimal(Cell cell) {
+        if (cell == null) return null;
+
+        switch (cell.getCellType()) {
+            case NUMERIC:
+                return BigDecimal.valueOf(cell.getNumericCellValue());
+
+            case STRING:
+                try {
+                    // ✅ Убираем возможные запятые в числах
+                    return new BigDecimal(cell.getStringCellValue().replace(",", ".").trim());
+                } catch (NumberFormatException e) {
+                    logger.warning("Ошибка парсинга курса: " + cell.getStringCellValue());
+                }
+        }
+        return null;
     }
 }
