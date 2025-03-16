@@ -92,4 +92,20 @@ public class CurrencyController {
             return ResponseEntity.badRequest().body(Collections.emptyList());
         }
     }
+
+    // ✅ Запускаем тестирование модели на прошедшем периоде
+    @GetMapping("/test-past/{currency}/{year}/{month}")
+    public ResponseEntity<String> testModelForPastMonth(
+            @PathVariable String currency,
+            @PathVariable int year,
+            @PathVariable int month) {
+        try {
+            currencyService.testModelForPastMonth(currency, year, month);
+            return ResponseEntity.ok("Тестирование модели завершено! Смотри логи.");
+        } catch (Exception e) {
+            logger.warning("Ошибка тестирования модели: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Ошибка: " + e.getMessage());
+        }
+    }
+
 }

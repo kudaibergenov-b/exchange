@@ -4,111 +4,118 @@ import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
 
 public class ArimaModel {
 
-    // ✅ Прогнозирование с использованием ARIMA
+    // ✅ Основной метод прогнозирования
     public static BigDecimal[] predict(List<BigDecimal> data, int days) {
-        // ✅ Копируем данные для работы
-        List<BigDecimal> differenced = new ArrayList<>(data);
+        if (data.size() < 10) {
+            throw new IllegalArgumentException("Недостаточно данных для прогнозирования");
+        }
 
-        // ✅ Определяем параметры ARIMA (p, d, q)
-        int[] bestParams = findBestParams(differenced);
+        // ✅ Определяем параметры ARIMA
+        int[] bestParams = findBestParams(data);
         int p = bestParams[0];
         int d = bestParams[1];
         int q = bestParams[2];
+        System.out.println("📌 Оптимальные параметры ARIMA(p, d, q): " + p + ", " + d + ", " + q);
 
-        // ✅ Применяем дифференцирование, если d > 0
-        for (int i = 0; i < d; i++) {
-            differenced = difference(differenced);
-        }
+        // ✅ Дифференцируем данные
+        List<BigDecimal> differenced = applyDifferencing(data, d);
 
-        // ✅ Вычисляем AR и MA коэффициенты
-        BigDecimal[] arCoefficients = calculateAR(differenced, p);
-        BigDecimal[] maCoefficients = calculateMA(differenced, q);
+        // ✅ Вычисляем коэффициенты AR и MA
+        double[] arCoefficients = calculateAR(differenced, p);
+        double[] maCoefficients = calculateMA(differenced, q);
 
-        // ✅ Прогнозируем будущие значения
+        // ✅ Прогнозируем
         BigDecimal[] predictions = new BigDecimal[days];
         for (int i = 0; i < days; i++) {
-            predictions[i] = predictNext(differenced, arCoefficients, maCoefficients);
-            differenced.add(predictions[i]);
+            double predictedValue = predictNext(differenced, arCoefficients, maCoefficients);
+            differenced.add(BigDecimal.valueOf(predictedValue));
+            predictions[i] = BigDecimal.valueOf(predictedValue);
         }
 
-        // ✅ Восстанавливаем прогнозируемые значения (если d > 0)
-        if (d > 0) {
-            predictions = restorePredictions(predictions, data.get(data.size() - 1));
-        }
-
-        return predictions;
+        // ✅ Восстанавливаем данные после разностей
+        return restorePredictions(predictions, data, d);
     }
 
-    // ✅ Восстанавливаем данные после разностей
-    private static BigDecimal[] restorePredictions(BigDecimal[] differenced, BigDecimal lastValue) {
-        BigDecimal[] restored = new BigDecimal[differenced.length];
-        BigDecimal value = lastValue;
-        for (int i = 0; i < differenced.length; i++) {
-            value = value.add(differenced[i]);
-            restored[i] = value;
-        }
-        return restored;
-    }
-
-    // ✅ Определение лучших параметров ARIMA
-    public static int[] findBestParams(List<BigDecimal> data) {
+    // ✅ Метод подбора параметров p, d, q
+    private static int[] findBestParams(List<BigDecimal> data) {
         int bestP = 0, bestD = 0, bestQ = 0;
-        BigDecimal bestError = BigDecimal.valueOf(Double.MAX_VALUE);
+        double bestAIC = Double.MAX_VALUE;
 
-        int maxP = Math.min(3, data.size() - 2);
-        int maxD = Math.min(2, data.size() - 1);
-        int maxQ = Math.min(3, data.size() - 2);
-
-        for (int p = 0; p <= maxP; p++) {
-            for (int d = 0; d <= maxD; d++) {
-                for (int q = 0; q <= maxQ; q++) {
+        for (int d = 0; d <= 2; d++) {
+            List<BigDecimal> diffData = applyDifferencing(data, d);
+            for (int p = 0; p <= Math.min(3, diffData.size() - 2); p++) {
+                for (int q = 0; q <= Math.min(3, diffData.size() - 2); q++) {
                     try {
-                        BigDecimal error = testModel(data, p, d, q);
-                        if (error.compareTo(bestError) < 0) {
-                            bestError = error;
+                        double aic = calculateAIC(diffData, p, q);
+                        if (aic < bestAIC) {
+                            bestAIC = aic;
                             bestP = p;
                             bestD = d;
                             bestQ = q;
                         }
                     } catch (Exception e) {
-                        System.err.println("Ошибка при p=" + p + ", d=" + d + ", q=" + q + ": " + e.getMessage());
+                        System.out.println("❌ Ошибка при p=" + p + ", d=" + d + ", q=" + q + ": " + e.getMessage());
                     }
                 }
             }
         }
-
         return new int[]{bestP, bestD, bestQ};
     }
 
-    // ✅ Тестируем модель
-    private static BigDecimal testModel(List<BigDecimal> data, int p, int d, int q) {
-        List<BigDecimal> differenced = data;
-        for (int i = 0; i < d; i++) {
-            differenced = difference(differenced);
+    // ✅ Вычисление AIC (Akaike Information Criterion)
+    private static double calculateAIC(List<BigDecimal> data, int p, int q) {
+        double[] arCoefficients = calculateAR(data, p);
+        double[] maCoefficients = calculateMA(data, q);
+
+        double error = 0;
+        for (int i = 0; i < data.size(); i++) {
+            double predicted = predictNext(data, arCoefficients, maCoefficients);
+            error += Math.pow(data.get(i).doubleValue() - predicted, 2);
         }
-
-        BigDecimal[] arCoefficients = calculateAR(differenced, p);
-        BigDecimal[] maCoefficients = calculateMA(differenced, q);
-
-        BigDecimal prediction = predictNext(differenced, arCoefficients, maCoefficients);
-        BigDecimal actual = data.get(data.size() - 1);
-
-        return prediction.subtract(actual).abs();
+        double variance = error / data.size();
+        return data.size() * Math.log(variance) + 2 * (p + q);
     }
 
-    // ✅ Расчет коэффициентов AR
-    public static BigDecimal[] calculateAR(List<BigDecimal> data, int p) {
-        int n = data.size();
-        if (n <= p) {
-            throw new IllegalArgumentException("Недостаточно данных для AR(p)");
+    // ✅ Дифференцирование данных
+    private static List<BigDecimal> applyDifferencing(List<BigDecimal> data, int d) {
+        List<BigDecimal> result = new ArrayList<>(data);
+        for (int i = 0; i < d; i++) {
+            result = difference(result);
         }
+        return result;
+    }
 
+    // ✅ Метод вычисления разностей (обычная и логарифмическая)
+    private static List<BigDecimal> difference(List<BigDecimal> data) {
+        List<BigDecimal> diff = new ArrayList<>();
+        for (int i = 1; i < data.size(); i++) {
+            diff.add(data.get(i).subtract(data.get(i - 1)));
+        }
+        return diff;
+    }
+
+    // ✅ Восстановление данных после разностей
+    private static BigDecimal[] restorePredictions(BigDecimal[] predictions, List<BigDecimal> originalData, int d) {
+        if (d == 0) return predictions;
+
+        BigDecimal[] restored = new BigDecimal[predictions.length];
+        BigDecimal lastValue = originalData.get(originalData.size() - 1);
+
+        for (int i = 0; i < predictions.length; i++) {
+            lastValue = lastValue.add(predictions[i]);
+            restored[i] = lastValue;
+        }
+        return restored;
+    }
+
+    // ✅ Вычисление коэффициентов AR
+    private static double[] calculateAR(List<BigDecimal> data, int p) {
+        if (p == 0) return new double[]{0};
+
+        int n = data.size();
         double[] y = new double[n - p];
         double[][] x = new double[n - p][p];
 
@@ -121,70 +128,56 @@ public class ArimaModel {
 
         OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
         regression.newSampleData(y, x);
-
-        return DoubleStream.of(regression.estimateRegressionParameters())
-                .mapToObj(BigDecimal::valueOf)
-                .toArray(BigDecimal[]::new);
+        return regression.estimateRegressionParameters();
     }
 
-    // ✅ Расчет коэффициентов MA
-    public static BigDecimal[] calculateMA(List<BigDecimal> data, int q) {
-        if (data.size() < q + 1) {
-            throw new IllegalArgumentException("Недостаточно данных для MA(q). Нужно как минимум " + (q + 1) + " точек.");
+    // ✅ Вычисление коэффициентов MA
+    private static double[] calculateMA(List<BigDecimal> data, int q) {
+        if (q == 0) return new double[]{0};
+
+        List<Double> errors = new ArrayList<>();
+        for (int i = 1; i < data.size(); i++) {
+            errors.add(data.get(i).doubleValue() - data.get(i - 1).doubleValue());
         }
 
-        List<BigDecimal> errors = IntStream.range(1, data.size())
-                .mapToObj(i -> data.get(i).subtract(data.get(i - 1)))
-                .toList();
-
         if (errors.size() < q) {
-            throw new IllegalArgumentException("Недостаточно ошибок для MA(q)");
+            throw new IllegalArgumentException("Недостаточно данных для MA(q)");
         }
 
         double[] y = new double[errors.size() - q];
         double[][] x = new double[errors.size() - q][q];
 
         for (int i = q; i < errors.size(); i++) {
-            y[i - q] = errors.get(i).doubleValue();
+            y[i - q] = errors.get(i);
             for (int j = 0; j < q; j++) {
-                x[i - q][j] = errors.get(i - j - 1).doubleValue();
+                x[i - q][j] = errors.get(i - j - 1);
             }
         }
 
         OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
         regression.newSampleData(y, x);
-
-        return DoubleStream.of(regression.estimateRegressionParameters())
-                .mapToObj(BigDecimal::valueOf)
-                .toArray(BigDecimal[]::new);
+        return regression.estimateRegressionParameters();
     }
 
     // ✅ Прогнозирование на основе ARMA
-    public static BigDecimal predictNext(List<BigDecimal> history, BigDecimal[] arCoefficients, BigDecimal[] maCoefficients) {
+    private static double predictNext(List<BigDecimal> history, double[] arCoefficients, double[] maCoefficients) {
         int p = arCoefficients.length - 1;
         int q = maCoefficients.length - 1;
 
-        BigDecimal prediction = arCoefficients[0];
+        double prediction = arCoefficients[0];
 
         for (int i = 0; i < p; i++) {
-            prediction = prediction.add(arCoefficients[i + 1].multiply(history.get(history.size() - 1 - i)));
+            prediction += arCoefficients[i + 1] * history.get(history.size() - 1 - i).doubleValue();
         }
 
-        List<BigDecimal> errors = IntStream.range(1, history.size())
-                .mapToObj(i -> history.get(i).subtract(history.get(i - 1)))
+        List<Double> errors = history.stream()
+                .map(BigDecimal::doubleValue)
                 .toList();
 
         for (int i = 0; i < q && i < errors.size(); i++) {
-            prediction = prediction.add(maCoefficients[i + 1].multiply(errors.get(errors.size() - 1 - i)));
+            prediction += maCoefficients[i + 1] * errors.get(errors.size() - 1 - i);
         }
 
         return prediction;
-    }
-
-    // ✅ Разности временного ряда
-    public static List<BigDecimal> difference(List<BigDecimal> data) {
-        return IntStream.range(1, data.size())
-                .mapToObj(i -> data.get(i).subtract(data.get(i - 1)))
-                .collect(Collectors.toList());
     }
 }
