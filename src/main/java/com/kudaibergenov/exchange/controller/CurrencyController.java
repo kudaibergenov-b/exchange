@@ -93,19 +93,18 @@ public class CurrencyController {
         }
     }
 
-    // ✅ Запускаем тестирование модели на прошедшем периоде
-    @GetMapping("/test-past/{currency}/{year}/{month}")
-    public ResponseEntity<String> testModelForPastMonth(
+    // ✅ Запрос на тестирование прогноза на неделю с фактическими данными
+    @GetMapping("/test-week/{currency}/{year}/{month}/{startDay}")
+    public ResponseEntity<String> testModelForPastWeek(
             @PathVariable String currency,
             @PathVariable int year,
-            @PathVariable int month) {
+            @PathVariable int month,
+            @PathVariable int startDay) {
         try {
-            currencyService.testModelForPastMonth(currency, year, month);
-            return ResponseEntity.ok("Тестирование модели завершено! Смотри логи.");
+            currencyService.testModelForPastWeek(currency, year, month, startDay);
+            return ResponseEntity.ok("Тест модели на неделю успешно выполнен!");
         } catch (Exception e) {
-            logger.warning("Ошибка тестирования модели: " + e.getMessage());
             return ResponseEntity.badRequest().body("Ошибка: " + e.getMessage());
         }
     }
-
 }

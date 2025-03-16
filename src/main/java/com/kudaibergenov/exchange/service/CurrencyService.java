@@ -84,20 +84,22 @@ public class CurrencyService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Метод тестирования модели на прошедшем периоде (например, февраль 2025)
-    public void testModelForPastMonth(String currency, int year, int month) {
-        LocalDate startOfMonth = LocalDate.of(year, month, 1);
-        LocalDate endOfMonth = startOfMonth.withDayOfMonth(startOfMonth.lengthOfMonth());
+    // ✅ Метод тестирования модели на прошедшем периоде (например, декабрь 2024)
+    public void testModelForPastWeek(String currency, int year, int month, int startDay) {
+        LocalDate startOfWeek = LocalDate.of(year, month, startDay);
+        LocalDate endOfWeek = startOfWeek.plusDays(6); // Прогнозируем 7 дней
 
-        // ✅ Получаем фактические курсы за февраль 2025
-        List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startOfMonth, endOfMonth, currency);
+        // ✅ Получаем фактические курсы за указанную неделю
+        List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startOfWeek, endOfWeek, currency);
         if (actualRates.isEmpty()) {
-            throw new IllegalStateException("Нет данных за " + month + "/" + year + " для " + currency);
+            throw new IllegalStateException("Нет данных за " + startOfWeek + " - " + endOfWeek + " для " + currency);
         }
 
-        // ✅ Используем все доступные исторические данные до 31 января 2025
-        LocalDate lastTrainingDate = startOfMonth.minusDays(1);
-        List<CurrencyRate> trainingData = repository.findByDateBeforeAndCurrencyCode(lastTrainingDate, currency);
+        // ✅ Используем данные за 2-3 года до начала недели для обучения
+        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
+        LocalDate trainingStartDate = lastTrainingDate.minusYears(2); // Берем 2 года данных
+        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
+
         if (trainingData.size() < 100) { // Должно быть хотя бы 100 точек для обучения
             throw new IllegalStateException("Недостаточно данных для обучения модели.");
         }
@@ -110,7 +112,7 @@ public class CurrencyService {
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
 
-        // ✅ Прогнозируем курс на февраль 2025
+        // ✅ Прогнозируем курс на неделю
         int daysToPredict = actualRates.size();
         BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, daysToPredict);
 
@@ -123,7 +125,7 @@ public class CurrencyService {
         BigDecimal mae = totalError.divide(BigDecimal.valueOf(daysToPredict), BigDecimal.ROUND_HALF_UP);
 
         // ✅ Логируем результаты
-        logger.info("📊 Тестирование модели для " + currency + " за " + month + "/" + year);
+        logger.info("📊 Тестирование модели для " + currency + " за неделю: " + startOfWeek + " - " + endOfWeek);
         for (int i = 0; i < daysToPredict; i++) {
             logger.info("Дата: " + actualRates.get(i).getDate() +
                     " | Фактический: " + actualRates.get(i).getRate() +

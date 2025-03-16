@@ -40,14 +40,14 @@ public class ArimaModel {
     }
 
     // ✅ Метод подбора параметров p, d, q
-    private static int[] findBestParams(List<BigDecimal> data) {
-        int bestP = 0, bestD = 0, bestQ = 0;
+    public static int[] findBestParams(List<BigDecimal> data) {
+        int bestP = 1, bestD = 1, bestQ = 1; // Минимальное значение p и q = 1
         double bestAIC = Double.MAX_VALUE;
 
         for (int d = 0; d <= 2; d++) {
             List<BigDecimal> diffData = applyDifferencing(data, d);
-            for (int p = 0; p <= Math.min(3, diffData.size() - 2); p++) {
-                for (int q = 0; q <= Math.min(3, diffData.size() - 2); q++) {
+            for (int p = 1; p <= Math.min(3, diffData.size() - 2); p++) { // p ≥ 1
+                for (int q = 1; q <= Math.min(3, diffData.size() - 2); q++) { // q ≥ 1
                     try {
                         double aic = calculateAIC(diffData, p, q);
                         if (aic < bestAIC) {
@@ -62,6 +62,14 @@ public class ArimaModel {
                 }
             }
         }
+
+        // Если модель выбрала случайную прогулку (p=0, d=1, q=0), принудительно устанавливаем p=1, q=1
+        if (bestP == 0 && bestD == 1 && bestQ == 0) {
+            System.out.println("⚠️ ARIMA выбрала p=0, d=1, q=0. Принудительная установка p=1, q=1");
+            bestP = 1;
+            bestQ = 1;
+        }
+
         return new int[]{bestP, bestD, bestQ};
     }
 
