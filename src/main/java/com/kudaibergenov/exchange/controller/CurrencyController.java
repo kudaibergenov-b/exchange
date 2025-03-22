@@ -74,51 +74,23 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
-    // ✅ Запросить прогноз курса валют
-    @GetMapping("/predict/{currency}/{days}")
-    public ResponseEntity<List<CurrencyRate>> getPrediction(
-            @PathVariable String currency,
-            @PathVariable int days) {
-
-        if (days <= 0) {
-            return ResponseEntity.badRequest().body(Collections.emptyList());
-        }
-
-        try {
-            List<CurrencyRate> predictions = currencyService.predictExchangeRate(currency, days);
-            return ResponseEntity.ok(predictions);
-        } catch (IllegalStateException e) {
-            logger.warning("Ошибка при прогнозировании для " + currency + ": " + e.getMessage());
-            return ResponseEntity.badRequest().body(Collections.emptyList());
-        }
-    }
-
-    // ✅ Запрос на тестирование прогноза на неделю с фактическими данными
-    @GetMapping("/test-week/{currency}/{year}/{month}/{startDay}")
-    public ResponseEntity<String> testModelForPastWeek(
-            @PathVariable String currency,
-            @PathVariable int year,
-            @PathVariable int month,
-            @PathVariable int startDay) {
-        try {
-            currencyService.testModelForPastWeek(currency, year, month, startDay);
-            return ResponseEntity.ok("Тест модели на неделю успешно выполнен!");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Ошибка: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/test-fixed-arima-week")
-    public ResponseEntity<String> testFixedArimaWeek(
+    // ✅ Прогнозирование курса на неделю
+    @GetMapping("/forecast/week")
+    public ResponseEntity<?> forecastForWeek(
             @RequestParam String currency,
             @RequestParam int year,
             @RequestParam int month,
-            @RequestParam int startDay,
-            @RequestParam int p,
-            @RequestParam int d,
-            @RequestParam int q) {
-        currencyService.testModelForPastWeekWithFixedParams(currency, year, month, startDay, p, d, q);
-        return ResponseEntity.ok("ARIMA (" + p + "," + d + "," + q + ") протестирована для " + currency + " на неделю.");
+            @RequestParam int startDay) {
+        return ResponseEntity.ok(currencyService.forecastForWeek(currency, year, month, startDay));
     }
 
+    // ✅ Тестирование модели на исторических данных
+    @GetMapping("/test/week")
+    public ResponseEntity<?> testModelForWeek(
+            @RequestParam String currency,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam int startDay) {
+        return ResponseEntity.ok(currencyService.testModelForWeek(currency, year, month, startDay));
+    }
 }

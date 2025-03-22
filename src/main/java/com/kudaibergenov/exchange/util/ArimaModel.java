@@ -4,47 +4,24 @@ import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class ArimaModel {
 
-    // ✅ Основной метод прогнозирования
+    private static final Logger logger = Logger.getLogger(ArimaModel.class.getName());
+
+    // ✅ Основной метод прогнозирования с фиксированными параметрами
     public static BigDecimal[] predict(List<BigDecimal> data, int days) {
-        if (data.size() < 10) {
-            throw new IllegalArgumentException("Недостаточно данных для прогнозирования");
-        }
-
-        // ✅ Определяем параметры ARIMA
-        int[] bestParams = findBestParams(data);
-        int p = bestParams[0];
-        int d = bestParams[1];
-        int q = bestParams[2];
-        System.out.println("📌 Оптимальные параметры ARIMA(p, d, q): " + p + ", " + d + ", " + q);
-
-        // ✅ Дифференцируем данные
-        List<BigDecimal> differenced = applyDifferencing(data, d);
-
-        // ✅ Вычисляем коэффициенты AR и MA
-        double[] arCoefficients = calculateAR(differenced, p);
-        double[] maCoefficients = calculateMA(differenced, q);
-
-        // ✅ Прогнозируем
-        BigDecimal[] predictions = new BigDecimal[days];
-        for (int i = 0; i < days; i++) {
-            double predictedValue = predictNext(differenced, arCoefficients, maCoefficients);
-            differenced.add(BigDecimal.valueOf(predictedValue));
-            predictions[i] = BigDecimal.valueOf(predictedValue);
-        }
-
-        // ✅ Восстанавливаем данные после разностей
-        return restorePredictions(predictions, data, d);
+        return predict(data, days, 1, 1, 0); // По умолчанию ARIMA(1,1,0)
     }
 
+    // ✅ Метод прогнозирования с заданными параметрами (для тестирования)
     public static BigDecimal[] predict(List<BigDecimal> data, int days, int p, int d, int q) {
         if (data.size() < 10) {
             throw new IllegalArgumentException("Недостаточно данных для прогнозирования");
         }
 
-        System.out.println("📌 Тестируем ARIMA с заданными параметрами (p, d, q): " + p + ", " + d + ", " + q);
+        logger.info("📌 Запуск ARIMA с параметрами (p, d, q): " + p + ", " + d + ", " + q);
 
         // ✅ Дифференцируем данные
         List<BigDecimal> differenced = applyDifferencing(data, d);
@@ -65,16 +42,15 @@ public class ArimaModel {
         return restorePredictions(predictions, data, d);
     }
 
-
-    // ✅ Метод подбора параметров p, d, q
+    // ✅ Подбор параметров (используется только в отладке)
     public static int[] findBestParams(List<BigDecimal> data) {
-        int bestP = 1, bestD = 1, bestQ = 1; // Минимальное значение p и q = 1
+        int bestP = 1, bestD = 1, bestQ = 1;
         double bestAIC = Double.MAX_VALUE;
 
         for (int d = 0; d <= 2; d++) {
             List<BigDecimal> diffData = applyDifferencing(data, d);
-            for (int p = 1; p <= Math.min(3, diffData.size() - 2); p++) { // p ≥ 1
-                for (int q = 1; q <= Math.min(3, diffData.size() - 2); q++) { // q ≥ 1
+            for (int p = 1; p <= Math.min(3, diffData.size() - 2); p++) {
+                for (int q = 1; q <= Math.min(3, diffData.size() - 2); q++) {
                     try {
                         double aic = calculateAIC(diffData, p, q);
                         if (aic < bestAIC) {
@@ -84,15 +60,14 @@ public class ArimaModel {
                             bestQ = q;
                         }
                     } catch (Exception e) {
-                        System.out.println("❌ Ошибка при p=" + p + ", d=" + d + ", q=" + q + ": " + e.getMessage());
+                        logger.warning("❌ Ошибка при p=" + p + ", d=" + d + ", q=" + q + ": " + e.getMessage());
                     }
                 }
             }
         }
 
-        // Если модель выбрала случайную прогулку (p=0, d=1, q=0), принудительно устанавливаем p=1, q=1
         if (bestP == 0 && bestD == 1 && bestQ == 0) {
-            System.out.println("⚠️ ARIMA выбрала p=0, d=1, q=0. Принудительная установка p=1, q=1");
+            logger.warning("⚠️ ARIMA выбрала p=0, d=1, q=0. Принудительная установка p=1, q=1");
             bestP = 1;
             bestQ = 1;
         }
@@ -123,7 +98,7 @@ public class ArimaModel {
         return result;
     }
 
-    // ✅ Метод вычисления разностей (обычная и логарифмическая)
+    // ✅ Разностное преобразование данных
     private static List<BigDecimal> difference(List<BigDecimal> data) {
         List<BigDecimal> diff = new ArrayList<>();
         for (int i = 1; i < data.size(); i++) {
@@ -132,7 +107,7 @@ public class ArimaModel {
         return diff;
     }
 
-    // ✅ Восстановление данных после разностей
+    // ✅ Восстановление после разностей
     private static BigDecimal[] restorePredictions(BigDecimal[] predictions, List<BigDecimal> originalData, int d) {
         if (d == 0) return predictions;
 
@@ -203,14 +178,6 @@ public class ArimaModel {
 
         for (int i = 0; i < p; i++) {
             prediction += arCoefficients[i + 1] * history.get(history.size() - 1 - i).doubleValue();
-        }
-
-        List<Double> errors = history.stream()
-                .map(BigDecimal::doubleValue)
-                .toList();
-
-        for (int i = 0; i < q && i < errors.size(); i++) {
-            prediction += maCoefficients[i + 1] * errors.get(errors.size() - 1 - i);
         }
 
         return prediction;

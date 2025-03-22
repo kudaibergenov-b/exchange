@@ -4,16 +4,17 @@ import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.repository.CurrencyRateRepository;
 import com.kudaibergenov.exchange.util.ArimaModel;
 import com.kudaibergenov.exchange.util.ExcelImporter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
+@Slf4j
 @Service
 public class CurrencyService {
 
@@ -53,135 +54,73 @@ public class CurrencyService {
         return rates;
     }
 
-    public List<CurrencyRate> predictExchangeRate(String currency, int days) {
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(365); // Используем больше данных
+    // ✅ Прогнозирование курса на неделю (без тестирования)
+    public List<BigDecimal> forecastForWeek(String currency, int year, int month, int startDay) {
+        LocalDate startOfWeek = LocalDate.of(year, month, startDay);
+        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
+        LocalDate trainingStartDate = lastTrainingDate.minusYears(2); // 2 года данных
 
-        List<CurrencyRate> historicalRates = repository.findByDateBetweenAndCurrencyCode(startDate, endDate, currency);
-
-        if (historicalRates.size() < 30) {
-            logger.warning("Недостаточно данных для прогнозирования валюты: " + currency);
-            throw new IllegalStateException("Недостаточно данных для прогнозирования");
+        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
+        if (trainingData.size() < 100) {
+            throw new IllegalStateException("Недостаточно данных для прогнозирования.");
         }
 
-        historicalRates = historicalRates.stream()
+        List<BigDecimal> trainingRates = trainingData.stream()
                 .sorted(Comparator.comparing(CurrencyRate::getDate))
-                .toList();
-
-        List<BigDecimal> rates = historicalRates.stream()
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
 
-        BigDecimal[] predictions = ArimaModel.predict(rates, days);
-        LocalDate predictionDate = endDate.plusDays(1);
-
-        return IntStream.range(0, days)
-                .mapToObj(i -> new CurrencyRate(
-                        predictionDate.plusDays(i),
-                        currency,
-                        predictions[i]
-                ))
-                .collect(Collectors.toList());
+        // Запускаем прогноз с фиксированными параметрами (1,1,0)
+        return Arrays.asList(ArimaModel.predict(trainingRates, 7));
     }
 
-    // ✅ Метод тестирования модели на прошедшем периоде (например, декабрь 2024)
-    public void testModelForPastWeek(String currency, int year, int month, int startDay) {
+    // ✅ Тестирование модели на прошедшей неделе
+    public Map<String, Object> testModelForWeek(String currency, int year, int month, int startDay) {
         LocalDate startOfWeek = LocalDate.of(year, month, startDay);
-        LocalDate endOfWeek = startOfWeek.plusDays(6); // Прогнозируем 7 дней
+        LocalDate endOfWeek = startOfWeek.plusDays(6);
+        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
+        LocalDate trainingStartDate = lastTrainingDate.minusYears(2);
 
-        // ✅ Получаем фактические курсы за указанную неделю
         List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startOfWeek, endOfWeek, currency);
         if (actualRates.isEmpty()) {
             throw new IllegalStateException("Нет данных за " + startOfWeek + " - " + endOfWeek + " для " + currency);
         }
 
-        // ✅ Используем данные за 2-3 года до начала недели для обучения
-        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
-        LocalDate trainingStartDate = lastTrainingDate.minusYears(2); // Берем 2 года данных
         List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
-
-        if (trainingData.size() < 100) { // Должно быть хотя бы 100 точек для обучения
+        if (trainingData.size() < 100) {
             throw new IllegalStateException("Недостаточно данных для обучения модели.");
         }
 
-        // ✅ Сортируем и преобразуем в BigDecimal
-        trainingData = trainingData.stream()
-                .sorted(Comparator.comparing(CurrencyRate::getDate))
-                .toList();
         List<BigDecimal> trainingRates = trainingData.stream()
+                .sorted(Comparator.comparing(CurrencyRate::getDate))
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
 
-        // ✅ Прогнозируем курс на неделю
-        int daysToPredict = actualRates.size();
-        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, daysToPredict);
+        // Запускаем прогноз с фиксированными параметрами (1,1,0)
+        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, actualRates.size(), 1, 1, 0);
 
-        // ✅ Вычисляем среднюю абсолютную ошибку (MAE)
+        // Вычисляем MAE (среднюю ошибку)
         BigDecimal totalError = BigDecimal.ZERO;
-        for (int i = 0; i < daysToPredict; i++) {
-            BigDecimal error = actualRates.get(i).getRate().subtract(predictedRates[i]).abs();
-            totalError = totalError.add(error);
+        for (int i = 0; i < actualRates.size(); i++) {
+            totalError = totalError.add(actualRates.get(i).getRate().subtract(predictedRates[i]).abs());
         }
-        BigDecimal mae = totalError.divide(BigDecimal.valueOf(daysToPredict), BigDecimal.ROUND_HALF_UP);
+        BigDecimal mae = totalError.divide(BigDecimal.valueOf(actualRates.size()), RoundingMode.HALF_UP);
 
-        // ✅ Логируем результаты
-        logger.info("📊 Тестирование модели для " + currency + " за неделю: " + startOfWeek + " - " + endOfWeek);
-        for (int i = 0; i < daysToPredict; i++) {
-            logger.info("Дата: " + actualRates.get(i).getDate() +
-                    " | Фактический: " + actualRates.get(i).getRate() +
-                    " | Прогнозируемый: " + predictedRates[i]);
+        // Логируем результаты
+        log.info("📊 Тестирование модели с ARIMA(1,1,0) для {} за неделю: {} - {}", currency, startOfWeek, endOfWeek);
+        for (int i = 0; i < actualRates.size(); i++) {
+            log.info("Дата: {} | Фактический: {} | Прогнозируемый: {}", actualRates.get(i).getDate(), actualRates.get(i).getRate(), predictedRates[i]);
         }
-        logger.info("📌 Средняя абсолютная ошибка (MAE): " + mae);
+        log.info("📌 Средняя абсолютная ошибка (MAE): {}", mae);
+
+        // Возвращаем результат в JSON
+        Map<String, Object> result = new HashMap<>();
+        result.put("currency", currency);
+        result.put("start_date", startOfWeek);
+        result.put("end_date", endOfWeek);
+        result.put("actual_rates", actualRates);
+        result.put("predicted_rates", predictedRates);
+        result.put("mae", mae);
+        return result;
     }
-
-    // ✅ Метод тестирования модели на прошедшей неделе с заданными параметрами ARIMA(p, d, q)
-    public void testModelForPastWeekWithFixedParams(String currency, int year, int month, int startDay, int p, int d, int q) {
-        LocalDate startOfWeek = LocalDate.of(year, month, startDay);
-        LocalDate endOfWeek = startOfWeek.plusDays(6); // Прогнозируем 7 дней
-
-        // ✅ Получаем фактические курсы за указанную неделю
-        List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startOfWeek, endOfWeek, currency);
-        if (actualRates.isEmpty()) {
-            throw new IllegalStateException("Нет данных за " + startOfWeek + " - " + endOfWeek + " для " + currency);
-        }
-
-        // ✅ Используем данные за 2-3 года до начала недели для обучения
-        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
-        LocalDate trainingStartDate = lastTrainingDate.minusYears(2); // Берем 2 года данных
-        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
-
-        if (trainingData.size() < 100) { // Должно быть хотя бы 100 точек для обучения
-            throw new IllegalStateException("Недостаточно данных для обучения модели.");
-        }
-
-        // ✅ Сортируем и преобразуем в BigDecimal
-        trainingData = trainingData.stream()
-                .sorted(Comparator.comparing(CurrencyRate::getDate))
-                .toList();
-        List<BigDecimal> trainingRates = trainingData.stream()
-                .map(CurrencyRate::getRate)
-                .collect(Collectors.toList());
-
-        // ✅ Тестируем ARIMA с заданными параметрами
-        int daysToPredict = actualRates.size();
-        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, daysToPredict, p, d, q);
-
-        // ✅ Вычисляем среднюю абсолютную ошибку (MAE)
-        BigDecimal totalError = BigDecimal.ZERO;
-        for (int i = 0; i < daysToPredict; i++) {
-            BigDecimal error = actualRates.get(i).getRate().subtract(predictedRates[i]).abs();
-            totalError = totalError.add(error);
-        }
-        BigDecimal mae = totalError.divide(BigDecimal.valueOf(daysToPredict), BigDecimal.ROUND_HALF_UP);
-
-        // ✅ Логируем результаты
-        logger.info("📊 Тестирование модели с ARIMA(" + p + "," + d + "," + q + ") для " + currency + " за неделю: " + startOfWeek + " - " + endOfWeek);
-        for (int i = 0; i < daysToPredict; i++) {
-            logger.info("Дата: " + actualRates.get(i).getDate() +
-                    " | Фактический: " + actualRates.get(i).getRate() +
-                    " | Прогнозируемый: " + predictedRates[i]);
-        }
-        logger.info("📌 Средняя абсолютная ошибка (MAE): " + mae);
-    }
-
 }
