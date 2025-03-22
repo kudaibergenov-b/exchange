@@ -39,6 +39,33 @@ public class ArimaModel {
         return restorePredictions(predictions, data, d);
     }
 
+    public static BigDecimal[] predict(List<BigDecimal> data, int days, int p, int d, int q) {
+        if (data.size() < 10) {
+            throw new IllegalArgumentException("Недостаточно данных для прогнозирования");
+        }
+
+        System.out.println("📌 Тестируем ARIMA с заданными параметрами (p, d, q): " + p + ", " + d + ", " + q);
+
+        // ✅ Дифференцируем данные
+        List<BigDecimal> differenced = applyDifferencing(data, d);
+
+        // ✅ Вычисляем коэффициенты AR и MA
+        double[] arCoefficients = calculateAR(differenced, p);
+        double[] maCoefficients = calculateMA(differenced, q);
+
+        // ✅ Прогнозируем
+        BigDecimal[] predictions = new BigDecimal[days];
+        for (int i = 0; i < days; i++) {
+            double predictedValue = predictNext(differenced, arCoefficients, maCoefficients);
+            differenced.add(BigDecimal.valueOf(predictedValue));
+            predictions[i] = BigDecimal.valueOf(predictedValue);
+        }
+
+        // ✅ Восстанавливаем данные после разностей
+        return restorePredictions(predictions, data, d);
+    }
+
+
     // ✅ Метод подбора параметров p, d, q
     public static int[] findBestParams(List<BigDecimal> data) {
         int bestP = 1, bestD = 1, bestQ = 1; // Минимальное значение p и q = 1

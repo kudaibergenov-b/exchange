@@ -107,4 +107,18 @@ public class CurrencyController {
             return ResponseEntity.badRequest().body("Ошибка: " + e.getMessage());
         }
     }
+
+    @GetMapping("/test-fixed-arima-week")
+    public ResponseEntity<String> testFixedArimaWeek(
+            @RequestParam String currency,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam int startDay,
+            @RequestParam int p,
+            @RequestParam int d,
+            @RequestParam int q) {
+        currencyService.testModelForPastWeekWithFixedParams(currency, year, month, startDay, p, d, q);
+        return ResponseEntity.ok("ARIMA (" + p + "," + d + "," + q + ") протестирована для " + currency + " на неделю.");
+    }
+
 }

@@ -133,4 +133,55 @@ public class CurrencyService {
         }
         logger.info("📌 Средняя абсолютная ошибка (MAE): " + mae);
     }
+
+    // ✅ Метод тестирования модели на прошедшей неделе с заданными параметрами ARIMA(p, d, q)
+    public void testModelForPastWeekWithFixedParams(String currency, int year, int month, int startDay, int p, int d, int q) {
+        LocalDate startOfWeek = LocalDate.of(year, month, startDay);
+        LocalDate endOfWeek = startOfWeek.plusDays(6); // Прогнозируем 7 дней
+
+        // ✅ Получаем фактические курсы за указанную неделю
+        List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startOfWeek, endOfWeek, currency);
+        if (actualRates.isEmpty()) {
+            throw new IllegalStateException("Нет данных за " + startOfWeek + " - " + endOfWeek + " для " + currency);
+        }
+
+        // ✅ Используем данные за 2-3 года до начала недели для обучения
+        LocalDate lastTrainingDate = startOfWeek.minusDays(1);
+        LocalDate trainingStartDate = lastTrainingDate.minusYears(2); // Берем 2 года данных
+        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
+
+        if (trainingData.size() < 100) { // Должно быть хотя бы 100 точек для обучения
+            throw new IllegalStateException("Недостаточно данных для обучения модели.");
+        }
+
+        // ✅ Сортируем и преобразуем в BigDecimal
+        trainingData = trainingData.stream()
+                .sorted(Comparator.comparing(CurrencyRate::getDate))
+                .toList();
+        List<BigDecimal> trainingRates = trainingData.stream()
+                .map(CurrencyRate::getRate)
+                .collect(Collectors.toList());
+
+        // ✅ Тестируем ARIMA с заданными параметрами
+        int daysToPredict = actualRates.size();
+        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, daysToPredict, p, d, q);
+
+        // ✅ Вычисляем среднюю абсолютную ошибку (MAE)
+        BigDecimal totalError = BigDecimal.ZERO;
+        for (int i = 0; i < daysToPredict; i++) {
+            BigDecimal error = actualRates.get(i).getRate().subtract(predictedRates[i]).abs();
+            totalError = totalError.add(error);
+        }
+        BigDecimal mae = totalError.divide(BigDecimal.valueOf(daysToPredict), BigDecimal.ROUND_HALF_UP);
+
+        // ✅ Логируем результаты
+        logger.info("📊 Тестирование модели с ARIMA(" + p + "," + d + "," + q + ") для " + currency + " за неделю: " + startOfWeek + " - " + endOfWeek);
+        for (int i = 0; i < daysToPredict; i++) {
+            logger.info("Дата: " + actualRates.get(i).getDate() +
+                    " | Фактический: " + actualRates.get(i).getRate() +
+                    " | Прогнозируемый: " + predictedRates[i]);
+        }
+        logger.info("📌 Средняя абсолютная ошибка (MAE): " + mae);
+    }
+
 }
