@@ -26,7 +26,6 @@ public class CurrencyController {
         this.currencyService = currencyService;
     }
 
-    // ✅ Импорт данных из Excel
     @PostMapping("/import-excel")
     public ResponseEntity<String> importExcelData(@RequestParam String filePath) {
         try {
@@ -38,7 +37,6 @@ public class CurrencyController {
         }
     }
 
-    // ✅ Получить курсы за конкретную дату
     @GetMapping("/rates/{date}")
     public ResponseEntity<List<CurrencyRate>> getRatesByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -46,7 +44,6 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
-    // ✅ Получить курсы за период (start → end)
     @GetMapping("/history")
     public ResponseEntity<List<CurrencyRate>> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
@@ -60,7 +57,6 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
-    // ✅ Получить исторические курсы за последние N дней
     @GetMapping("/history/{currency}/{days}")
     public ResponseEntity<List<CurrencyRate>> getHistoricalRates(
             @PathVariable String currency,
@@ -74,7 +70,6 @@ public class CurrencyController {
         return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
     }
 
-    // ✅ Прогнозирование курса на неделю
     @GetMapping("/forecast/week")
     public ResponseEntity<?> forecastForWeek(
             @RequestParam String currency,
@@ -84,7 +79,6 @@ public class CurrencyController {
         return ResponseEntity.ok(currencyService.forecastForWeek(currency, year, month, startDay));
     }
 
-    // ✅ Тестирование модели на исторических данных
     @GetMapping("/test/week")
     public ResponseEntity<?> testModelForWeek(
             @RequestParam String currency,

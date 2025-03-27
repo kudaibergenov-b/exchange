@@ -14,6 +14,4 @@ public interface CurrencyRateRepository extends JpaRepository<CurrencyRate, Long
     List<CurrencyRate> findByDate(LocalDate date);
     List<CurrencyRate> findByDateBetween(LocalDate start, LocalDate end);
     List<CurrencyRate> findByDateBetweenAndCurrencyCode(LocalDate start, LocalDate end, String currencyCode);
-    List<CurrencyRate> findByDateBeforeAndCurrencyCode(LocalDate date, String currencyCode);
-
 }

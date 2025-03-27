@@ -54,7 +54,6 @@ public class CurrencyService {
         return rates;
     }
 
-    // ✅ Прогнозирование курса на неделю (без тестирования)
     public List<BigDecimal> forecastForWeek(String currency, int year, int month, int startDay) {
         LocalDate startOfWeek = LocalDate.of(year, month, startDay);
         LocalDate lastTrainingDate = startOfWeek.minusDays(1);
@@ -70,11 +69,9 @@ public class CurrencyService {
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
 
-        // Запускаем прогноз с фиксированными параметрами (1,1,0)
         return Arrays.asList(ArimaModel.predict(trainingRates, 7));
     }
 
-    // ✅ Тестирование модели на прошедшей неделе
     public Map<String, Object> testModelForWeek(String currency, int year, int month, int startDay) {
         LocalDate startOfWeek = LocalDate.of(year, month, startDay);
         LocalDate endOfWeek = startOfWeek.plusDays(6);
@@ -96,24 +93,20 @@ public class CurrencyService {
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
 
-        // Запускаем прогноз с фиксированными параметрами (1,1,0)
         BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, actualRates.size(), 1, 1, 0);
 
-        // Вычисляем MAE (среднюю ошибку)
         BigDecimal totalError = BigDecimal.ZERO;
         for (int i = 0; i < actualRates.size(); i++) {
             totalError = totalError.add(actualRates.get(i).getRate().subtract(predictedRates[i]).abs());
         }
         BigDecimal mae = totalError.divide(BigDecimal.valueOf(actualRates.size()), RoundingMode.HALF_UP);
 
-        // Логируем результаты
-        log.info("📊 Тестирование модели с ARIMA(1,1,0) для {} за неделю: {} - {}", currency, startOfWeek, endOfWeek);
+        log.info("Тестирование модели с ARIMA(1,1,0) для {} за неделю: {} - {}", currency, startOfWeek, endOfWeek);
         for (int i = 0; i < actualRates.size(); i++) {
             log.info("Дата: {} | Фактический: {} | Прогнозируемый: {}", actualRates.get(i).getDate(), actualRates.get(i).getRate(), predictedRates[i]);
         }
-        log.info("📌 Средняя абсолютная ошибка (MAE): {}", mae);
+        log.info("Средняя абсолютная ошибка (MAE): {}", mae);
 
-        // Возвращаем результат в JSON
         Map<String, Object> result = new HashMap<>();
         result.put("currency", currency);
         result.put("start_date", startOfWeek);
