@@ -1,18 +1,16 @@
 package com.kudaibergenov.exchange.scheduler;
 
-import com.kudaibergenov.exchange.service.CurrencyService;
+import com.kudaibergenov.exchange.service.CurrencyForecastService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
 
 @Component
 public class CurrencyScheduler {
 
-    private final CurrencyService currencyService;
+    private final CurrencyForecastService currencyForecastService;
 
-    public CurrencyScheduler(CurrencyService currencyService) {
-        this.currencyService = currencyService;
+    public CurrencyScheduler(CurrencyForecastService currencyForecastService) {
+        this.currencyForecastService = currencyForecastService;
     }
 
     @Scheduled(cron = "0 0 12 * * ?", zone = "Asia/Bishkek") // Каждый день в 12:00

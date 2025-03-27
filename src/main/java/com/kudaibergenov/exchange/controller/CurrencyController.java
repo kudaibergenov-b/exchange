@@ -1,90 +1,51 @@
 package com.kudaibergenov.exchange.controller;
 
 import com.kudaibergenov.exchange.model.CurrencyRate;
-import com.kudaibergenov.exchange.repository.CurrencyRateRepository;
-import com.kudaibergenov.exchange.service.CurrencyService;
+import com.kudaibergenov.exchange.service.CurrencyDataService;
+import com.kudaibergenov.exchange.service.CurrencyForecastService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
-import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/currency")
 public class CurrencyController {
 
-    private static final Logger logger = Logger.getLogger(CurrencyController.class.getName());
+    private final CurrencyDataService currencyDataService;
+    private final CurrencyForecastService currencyForecastService;
 
-    private final CurrencyRateRepository repository;
-    private final CurrencyService currencyService;
-
-    public CurrencyController(CurrencyRateRepository repository, CurrencyService currencyService) {
-        this.repository = repository;
-        this.currencyService = currencyService;
-    }
-
-    @PostMapping("/import-excel")
-    public ResponseEntity<String> importExcelData(@RequestParam String filePath) {
-        try {
-            currencyService.importFromExcel(filePath);
-            return ResponseEntity.ok("Excel data successfully imported from: " + filePath);
-        } catch (Exception e) {
-            logger.severe("Ошибка импорта файла: " + e.getMessage());
-            return ResponseEntity.internalServerError().body("Ошибка импорта: " + e.getMessage());
-        }
+    public CurrencyController(CurrencyDataService currencyDataService, CurrencyForecastService currencyForecastService) {
+        this.currencyDataService = currencyDataService;
+        this.currencyForecastService = currencyForecastService;
     }
 
     @GetMapping("/rates/{date}")
     public ResponseEntity<List<CurrencyRate>> getRatesByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        List<CurrencyRate> rates = repository.findByDate(date);
-        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
+        return ResponseEntity.ok(currencyDataService.getRatesByDate(date));
     }
 
     @GetMapping("/history")
     public ResponseEntity<List<CurrencyRate>> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-
-        if (start.isAfter(end)) {
-            return ResponseEntity.badRequest().body(Collections.emptyList());
-        }
-
-        List<CurrencyRate> rates = repository.findByDateBetween(start, end);
-        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
-    }
-
-    @GetMapping("/history/{currency}/{days}")
-    public ResponseEntity<List<CurrencyRate>> getHistoricalRates(
-            @PathVariable String currency,
-            @PathVariable int days) {
-
-        if (days <= 0) {
-            return ResponseEntity.badRequest().body(Collections.emptyList());
-        }
-
-        List<CurrencyRate> rates = currencyService.getHistoricalRates(currency, days);
-        return rates.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rates);
+        return ResponseEntity.ok(currencyDataService.getHistory(start, end));
     }
 
     @GetMapping("/forecast/week")
     public ResponseEntity<?> forecastForWeek(
             @RequestParam String currency,
-            @RequestParam int year,
-            @RequestParam int month,
-            @RequestParam int startDay) {
-        return ResponseEntity.ok(currencyService.forecastForWeek(currency, year, month, startDay));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
+        return ResponseEntity.ok(currencyForecastService.forecastForWeek(currency, startDate));
     }
 
     @GetMapping("/test/week")
     public ResponseEntity<?> testModelForWeek(
             @RequestParam String currency,
-            @RequestParam int year,
-            @RequestParam int month,
-            @RequestParam int startDay) {
-        return ResponseEntity.ok(currencyService.testModelForWeek(currency, year, month, startDay));
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
+        return ResponseEntity.ok(currencyForecastService.testModelForWeek(currency, startDate));
     }
 }
