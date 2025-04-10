@@ -1,6 +1,7 @@
 package com.kudaibergenov.exchange.controller;
 
 import com.kudaibergenov.exchange.service.CurrencyConverterService;
+import com.kudaibergenov.exchange.service.CurrencyConverterService.ConversionResult;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,11 +15,11 @@ public class CurrencyConverterController {
     }
 
     @GetMapping("/convert")
-    public double convert(
+    public ConversionResult convert(
             @RequestParam String from,
             @RequestParam String to,
             @RequestParam double amount
     ) {
-        return converterService.convert(from.toUpperCase(), to.toUpperCase(), amount);
+        return converterService.convert(from, to, amount);
     }
 }
