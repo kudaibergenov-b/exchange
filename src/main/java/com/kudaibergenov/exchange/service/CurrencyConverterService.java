@@ -20,27 +20,9 @@ public class CurrencyConverterService {
             String response = fxKgService.getCentralBankRates();
             JsonNode root = objectMapper.readTree(response);
 
-            double fromRate;
-            if (from.equalsIgnoreCase("KGS")) {
-                fromRate = 1.0;
-            } else {
-                JsonNode fromNode = root.get(from.toLowerCase());
-                if (fromNode == null) {
-                    throw new IllegalArgumentException("Currency '" + from + "' not found in FX.KG rates");
-                }
-                fromRate = fromNode.asDouble();
-            }
-
-            double toRate;
-            if (to.equalsIgnoreCase("KGS")) {
-                toRate = 1.0;
-            } else {
-                JsonNode toNode = root.get(to.toLowerCase());
-                if (toNode == null) {
-                    throw new IllegalArgumentException("Currency '" + to + "' not found in FX.KG rates");
-                }
-                toRate = toNode.asDouble();
-            }
+            // Получаем курс валюты
+            double fromRate = getCurrencyRate(root, from);
+            double toRate = getCurrencyRate(root, to);
 
             double convertedAmount = amount * (fromRate / toRate);
 
@@ -48,6 +30,18 @@ public class CurrencyConverterService {
 
         } catch (Exception e) {
             throw new RuntimeException("Error during currency conversion", e);
+        }
+    }
+
+    private double getCurrencyRate(JsonNode root, String currency) {
+        if (currency.equalsIgnoreCase("KGS")) {
+            return 1.0;
+        } else {
+            JsonNode currencyNode = root.get(currency.toLowerCase());
+            if (currencyNode == null) {
+                throw new IllegalArgumentException("Currency '" + currency + "' not found in FX.KG rates");
+            }
+            return currencyNode.asDouble();
         }
     }
 
@@ -67,12 +61,5 @@ public class CurrencyConverterService {
             this.toRate = toRate;
             this.convertedAmount = convertedAmount;
         }
-
-        public String getFrom() { return from; }
-        public String getTo() { return to; }
-        public double getAmount() { return amount; }
-        public double getFromRate() { return fromRate; }
-        public double getToRate() { return toRate; }
-        public double getConvertedAmount() { return convertedAmount; }
     }
 }
