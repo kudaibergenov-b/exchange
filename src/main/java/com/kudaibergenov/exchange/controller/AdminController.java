@@ -1,6 +1,7 @@
 package com.kudaibergenov.exchange.controller;
 
 import com.kudaibergenov.exchange.service.CurrencyDataService;
+import com.kudaibergenov.exchange.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,14 +16,14 @@ public class AdminController {
     }
 
     @PostMapping("/import-excel")
-    public ResponseEntity<String> importExcelData(@RequestParam String filePath) {
+    public ResponseEntity<ApiResponse<String>> importExcelData(@RequestParam String filePath) {
         currencyDataService.importFromExcel(filePath);
-        return ResponseEntity.ok("Excel data successfully imported from: " + filePath);
+        return ResponseEntity.ok(ApiResponse.ok("Excel data successfully imported", filePath));
     }
 
     @DeleteMapping("/delete-all-data")
-    public ResponseEntity<String> deleteAllData() {
+    public ResponseEntity<ApiResponse<String>> deleteAllData() {
         currencyDataService.deleteAllData();
-        return ResponseEntity.ok("All currency data deleted.");
+        return ResponseEntity.ok(ApiResponse.ok("All currency data deleted.", null));
     }
 }

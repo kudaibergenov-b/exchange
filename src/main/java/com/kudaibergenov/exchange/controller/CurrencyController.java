@@ -1,14 +1,17 @@
 package com.kudaibergenov.exchange.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kudaibergenov.exchange.dto.ApiResponse;
 import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.service.CurrencyDataService;
-import com.kudaibergenov.exchange.service.CurrencyForecastService;
 import com.kudaibergenov.exchange.service.FxKgService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -16,65 +19,46 @@ import java.util.List;
 public class CurrencyController {
 
     private final CurrencyDataService currencyDataService;
-    private final CurrencyForecastService currencyForecastService;
     private final FxKgService fxKgService;
+    private final ObjectMapper objectMapper;
 
-    public CurrencyController(CurrencyDataService currencyDataService,
-                              CurrencyForecastService currencyForecastService,
-                              FxKgService fxKgService) {
+    public CurrencyController(CurrencyDataService currencyDataService, FxKgService fxKgService, ObjectMapper objectMapper) {
         this.currencyDataService = currencyDataService;
-        this.currencyForecastService = currencyForecastService;
         this.fxKgService = fxKgService;
+        this.objectMapper = objectMapper;
     }
 
-    // --- Существующие эндпоинты ---
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<List<String>>> getAvailableCurrencies() {
+        try {
+            String response = fxKgService.getCentralBankRates();
+            JsonNode jsonNode = objectMapper.readTree(response);
+
+            List<String> currencies = new ArrayList<>();
+            jsonNode.fieldNames().forEachRemaining(code -> {
+                if (!List.of("id", "created_at", "updated_at", "is_current").contains(code)) {
+                    currencies.add(code.toUpperCase());
+                }
+            });
+
+            return ResponseEntity.ok(new ApiResponse<>(currencies));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new ApiResponse<>(false, "Failed to fetch currency list", null));
+        }
+    }
 
     @GetMapping("/rates/{date}")
-    public ResponseEntity<List<CurrencyRate>> getRatesByDate(
+    public ResponseEntity<ApiResponse<List<CurrencyRate>>> getRatesByDate(
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(currencyDataService.getRatesByDate(date));
+        List<CurrencyRate> rates = currencyDataService.getRatesByDate(date);
+        return ResponseEntity.ok(new ApiResponse<>(rates));
     }
 
     @GetMapping("/history")
-    public ResponseEntity<List<CurrencyRate>> getHistory(
+    public ResponseEntity<ApiResponse<List<CurrencyRate>>> getHistory(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
-        return ResponseEntity.ok(currencyDataService.getHistory(start, end));
-    }
-
-    @GetMapping("/forecast/week")
-    public ResponseEntity<?> forecastForWeek(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
-        return ResponseEntity.ok(currencyForecastService.forecastForWeek(currency, startDate));
-    }
-
-    @GetMapping("/test/week")
-    public ResponseEntity<?> testModelForWeek(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
-        return ResponseEntity.ok(currencyForecastService.testModelForWeek(currency, startDate));
-    }
-
-    // --- Новые эндпоинты для API fx.kg ---
-
-    @GetMapping("/fxkg/average")
-    public ResponseEntity<String> getAverageRates() {
-        return ResponseEntity.ok(fxKgService.getAverageRates());
-    }
-
-    @GetMapping("/fxkg/best")
-    public ResponseEntity<String> getBestRates() {
-        return ResponseEntity.ok(fxKgService.getBestRates());
-    }
-
-    @GetMapping("/fxkg/current")
-    public ResponseEntity<String> getCurrentRates() {
-        return ResponseEntity.ok(fxKgService.getCurrentRates());
-    }
-
-    @GetMapping("/fxkg/central")
-    public ResponseEntity<String> getCentralBankRates() {
-        return ResponseEntity.ok(fxKgService.getCentralBankRates());
+        List<CurrencyRate> history = currencyDataService.getHistory(start, end);
+        return ResponseEntity.ok(new ApiResponse<>(history));
     }
 }

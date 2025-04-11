@@ -20,7 +20,6 @@ public class CurrencyConverterService {
             String response = fxKgService.getCentralBankRates();
             JsonNode root = objectMapper.readTree(response);
 
-            // Получаем курс валюты
             double fromRate = getCurrencyRate(root, from);
             double toRate = getCurrencyRate(root, to);
 

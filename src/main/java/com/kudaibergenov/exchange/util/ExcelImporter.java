@@ -112,7 +112,6 @@ public class ExcelImporter {
 
             case STRING:
                 try {
-                    // ✅ Убираем возможные запятые в числах
                     return new BigDecimal(cell.getStringCellValue().replace(",", ".").trim());
                 } catch (NumberFormatException e) {
                     logger.warning("Ошибка парсинга курса: " + cell.getStringCellValue());
