@@ -1,5 +1,6 @@
 package com.kudaibergenov.exchange.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.kudaibergenov.exchange.dto.ApiResponse;
 import com.kudaibergenov.exchange.service.FxKgService;
 import org.springframework.http.ResponseEntity;
@@ -16,22 +17,22 @@ public class FxKgController {
     }
 
     @GetMapping("/average")
-    public ResponseEntity<ApiResponse<String>> getAverageRates() {
+    public ResponseEntity<ApiResponse<JsonNode>> getAverageRates() {
         return ResponseEntity.ok(new ApiResponse<>(fxKgService.getAverageRates()));
     }
 
     @GetMapping("/best")
-    public ResponseEntity<ApiResponse<String>> getBestRates() {
+    public ResponseEntity<ApiResponse<JsonNode>> getBestRates() {
         return ResponseEntity.ok(new ApiResponse<>(fxKgService.getBestRates()));
     }
 
     @GetMapping("/current")
-    public ResponseEntity<ApiResponse<String>> getCurrentRates() {
+    public ResponseEntity<ApiResponse<JsonNode>> getCurrentRates() {
         return ResponseEntity.ok(new ApiResponse<>(fxKgService.getCurrentRates()));
     }
 
     @GetMapping("/central")
-    public ResponseEntity<ApiResponse<String>> getCentralBankRates() {
+    public ResponseEntity<ApiResponse<JsonNode>> getCentralBankRates() {
         return ResponseEntity.ok(new ApiResponse<>(fxKgService.getCentralBankRates()));
     }
 }

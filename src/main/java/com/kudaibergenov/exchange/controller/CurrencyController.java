@@ -1,7 +1,6 @@
 package com.kudaibergenov.exchange.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kudaibergenov.exchange.dto.ApiResponse;
 import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.service.CurrencyDataService;
@@ -20,29 +19,30 @@ public class CurrencyController {
 
     private final CurrencyDataService currencyDataService;
     private final FxKgService fxKgService;
-    private final ObjectMapper objectMapper;
 
-    public CurrencyController(CurrencyDataService currencyDataService, FxKgService fxKgService, ObjectMapper objectMapper) {
+    public CurrencyController(CurrencyDataService currencyDataService, FxKgService fxKgService) {
         this.currencyDataService = currencyDataService;
         this.fxKgService = fxKgService;
-        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/list")
     public ResponseEntity<ApiResponse<List<String>>> getAvailableCurrencies() {
         try {
-            String response = fxKgService.getCentralBankRates();
-            JsonNode jsonNode = objectMapper.readTree(response);
+            // Получаем данные с FX.KG API в виде JsonNode
+            JsonNode root = fxKgService.getCentralBankRates();
 
+            // Собираем список доступных валют, исключая ненужные поля
             List<String> currencies = new ArrayList<>();
-            jsonNode.fieldNames().forEachRemaining(code -> {
+            root.fieldNames().forEachRemaining(code -> {
                 if (!List.of("id", "created_at", "updated_at", "is_current").contains(code)) {
                     currencies.add(code.toUpperCase());
                 }
             });
 
+            // Возвращаем список валют в ApiResponse
             return ResponseEntity.ok(new ApiResponse<>(currencies));
         } catch (Exception e) {
+            // Если произошла ошибка, возвращаем ошибку в ApiResponse
             return ResponseEntity.internalServerError().body(new ApiResponse<>(false, "Failed to fetch currency list", null));
         }
     }

@@ -1,24 +1,21 @@
 package com.kudaibergenov.exchange.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CurrencyConverterService {
 
     private final FxKgService fxKgService;
-    private final ObjectMapper objectMapper;
 
-    public CurrencyConverterService(FxKgService fxKgService, ObjectMapper objectMapper) {
+    public CurrencyConverterService(FxKgService fxKgService) {
         this.fxKgService = fxKgService;
-        this.objectMapper = objectMapper;
     }
 
     public ConversionResult convert(String from, String to, double amount) {
         try {
-            String response = fxKgService.getCentralBankRates();
-            JsonNode root = objectMapper.readTree(response);
+            // Получаем данные с FX.KG API в виде JsonNode
+            JsonNode root = fxKgService.getCentralBankRates();
 
             double fromRate = getCurrencyRate(root, from);
             double toRate = getCurrencyRate(root, to);
