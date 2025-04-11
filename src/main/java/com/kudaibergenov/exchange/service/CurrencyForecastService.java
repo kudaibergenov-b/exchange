@@ -22,50 +22,29 @@ public class CurrencyForecastService {
         this.repository = repository;
     }
 
+    public List<BigDecimal> forecast(String currency, LocalDate startDate, int days) {
+        validateDays(days);
+
+        List<BigDecimal> trainingRates = getTrainingRates(currency, startDate);
+        return Arrays.asList(ArimaModel.predict(trainingRates, days, 1, 1, 0));
+    }
+
     public List<BigDecimal> forecastForWeek(String currency, LocalDate startDate) {
-        LocalDate lastTrainingDate = startDate.minusDays(1);
-        LocalDate trainingStartDate = lastTrainingDate.minusYears(2);
-
-        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
-        if (trainingData.size() < 100) {
-            throw new IllegalStateException("Недостаточно данных для прогнозирования.");
-        }
-
-        List<BigDecimal> trainingRates = trainingData.stream()
-                .sorted(Comparator.comparing(CurrencyRate::getDate))
-                .map(CurrencyRate::getRate)
-                .collect(Collectors.toList());
-
-        return Arrays.asList(ArimaModel.predict(trainingRates, 7));
+        return forecast(currency, startDate, 7);
     }
 
     public Map<String, Object> testModelForWeek(String currency, LocalDate startDate) {
         LocalDate endDate = startDate.plusDays(6);
-        LocalDate lastTrainingDate = startDate.minusDays(1);
-        LocalDate trainingStartDate = lastTrainingDate.minusYears(2);
 
         List<CurrencyRate> actualRates = repository.findByDateBetweenAndCurrencyCode(startDate, endDate, currency);
         if (actualRates.isEmpty()) {
             throw new IllegalStateException("Нет данных за " + startDate + " - " + endDate + " для " + currency);
         }
 
-        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
-        if (trainingData.size() < 100) {
-            throw new IllegalStateException("Недостаточно данных для обучения модели.");
-        }
-
-        List<BigDecimal> trainingRates = trainingData.stream()
-                .sorted(Comparator.comparing(CurrencyRate::getDate))
-                .map(CurrencyRate::getRate)
-                .toList();
-
+        List<BigDecimal> trainingRates = getTrainingRates(currency, startDate);
         BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, actualRates.size(), 1, 1, 0);
 
-        BigDecimal mae = BigDecimal.ZERO;
-        for (int i = 0; i < actualRates.size(); i++) {
-            mae = mae.add(actualRates.get(i).getRate().subtract(predictedRates[i]).abs());
-        }
-        mae = mae.divide(BigDecimal.valueOf(actualRates.size()), RoundingMode.HALF_UP);
+        BigDecimal mae = calculateMAE(actualRates, predictedRates);
 
         log.info("Тестирование модели ARIMA(1,1,0) для {} за неделю: {} - {}", currency, startDate, endDate);
         for (int i = 0; i < actualRates.size(); i++) {
@@ -81,5 +60,34 @@ public class CurrencyForecastService {
                 "predicted_rates", predictedRates,
                 "mae", mae
         );
+    }
+
+    private List<BigDecimal> getTrainingRates(String currency, LocalDate forecastStartDate) {
+        LocalDate lastTrainingDate = forecastStartDate.minusDays(1);
+        LocalDate trainingStartDate = lastTrainingDate.minusYears(2);
+
+        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
+        if (trainingData.size() < 100) {
+            throw new IllegalStateException("Недостаточно данных для прогнозирования.");
+        }
+
+        return trainingData.stream()
+                .sorted(Comparator.comparing(CurrencyRate::getDate))
+                .map(CurrencyRate::getRate)
+                .collect(Collectors.toList());
+    }
+
+    private BigDecimal calculateMAE(List<CurrencyRate> actualRates, BigDecimal[] predictedRates) {
+        BigDecimal mae = BigDecimal.ZERO;
+        for (int i = 0; i < actualRates.size(); i++) {
+            mae = mae.add(actualRates.get(i).getRate().subtract(predictedRates[i]).abs());
+        }
+        return mae.divide(BigDecimal.valueOf(actualRates.size()), RoundingMode.HALF_UP);
+    }
+
+    private void validateDays(int days) {
+        if (days <= 0) {
+            throw new IllegalArgumentException("Прогнозируемый период должен быть больше 0");
+        }
     }
 }

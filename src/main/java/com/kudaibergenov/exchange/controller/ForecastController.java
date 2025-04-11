@@ -18,6 +18,14 @@ public class ForecastController {
         this.currencyForecastService = currencyForecastService;
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<?>> forecast(
+            @RequestParam String currency,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam int days) {
+        return ResponseEntity.ok(new ApiResponse<>(currencyForecastService.forecast(currency, startDate, days)));
+    }
+
     @GetMapping("/week")
     public ResponseEntity<ApiResponse<?>> forecastForWeek(
             @RequestParam String currency,
