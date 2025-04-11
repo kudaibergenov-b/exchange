@@ -1,7 +1,10 @@
 package com.kudaibergenov.exchange.controller;
 
 import com.kudaibergenov.exchange.dto.ApiResponse;
+import com.kudaibergenov.exchange.dto.ConvertRequest;
+import com.kudaibergenov.exchange.dto.ConversionResult;
 import com.kudaibergenov.exchange.service.CurrencyConverterService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,12 +18,11 @@ public class ConverterController {
         this.converterService = converterService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<CurrencyConverterService.ConversionResult>> convert(
-            @RequestParam String from,
-            @RequestParam String to,
-            @RequestParam double amount
+    @PostMapping
+    public ResponseEntity<ApiResponse<ConversionResult>> convert(
+            @RequestBody @Valid ConvertRequest request
     ) {
-        return ResponseEntity.ok(new ApiResponse<>(converterService.convert(from, to, amount)));
+        ConversionResult result = converterService.convert(request.getFrom(), request.getTo(), request.getAmount());
+        return ResponseEntity.ok(new ApiResponse<>(result));
     }
 }
