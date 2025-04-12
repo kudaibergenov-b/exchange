@@ -21,32 +21,32 @@ public class FxKgService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String BASE_URL = "https://data.fx.kg/api/v1";
 
-    private JsonNode sendRequest(String endpoint) {
+    public JsonNode getRates(String type) {
         try {
-            String url = BASE_URL + endpoint;
+            String url = BASE_URL + "/" + type;
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + apiToken);
             RequestEntity<Void> request = new RequestEntity<>(headers, HttpMethod.GET, URI.create(url));
             String response = restTemplate.exchange(request, String.class).getBody();
-            return objectMapper.readTree(response); // ✅ превращаем String в JSON
+            return objectMapper.readTree(response);
         } catch (Exception e) {
-            throw new RuntimeException("Error retrieving data from FX.KG", e);
+            throw new RuntimeException("Error retrieving " + type + " rates from FX.KG", e);
         }
     }
 
     public JsonNode getAverageRates() {
-        return sendRequest("/average");
+        return getRates("average");
     }
 
     public JsonNode getBestRates() {
-        return sendRequest("/best");
+        return getRates("best");
     }
 
     public JsonNode getCurrentRates() {
-        return sendRequest("/current");
+        return getRates("current");
     }
 
     public JsonNode getCentralBankRates() {
-        return sendRequest("/central");
+        return getRates("central");
     }
 }

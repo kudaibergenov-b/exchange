@@ -1,12 +1,10 @@
 package com.kudaibergenov.exchange.controller;
 
-import com.kudaibergenov.exchange.dto.ApiResponse;
+import com.kudaibergenov.exchange.dto.*;
 import com.kudaibergenov.exchange.service.CurrencyForecastService;
-import org.springframework.format.annotation.DateTimeFormat;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/forecast")
@@ -18,25 +16,23 @@ public class ForecastController {
         this.currencyForecastService = currencyForecastService;
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<?>> forecast(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam int days) {
-        return ResponseEntity.ok(new ApiResponse<>(currencyForecastService.forecast(currency, startDate, days)));
+    @PostMapping
+    public ResponseEntity<ApiResponse<ForecastResponse>> forecast(@Valid @RequestBody ForecastRequest request) {
+        ForecastResponse response = currencyForecastService.forecast(
+                request.getCurrency(),
+                request.getStartDate(),
+                request.getDays()
+        );
+        return ResponseEntity.ok(new ApiResponse<>(response));
     }
 
-    @GetMapping("/week")
-    public ResponseEntity<ApiResponse<?>> forecastForWeek(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
-        return ResponseEntity.ok(new ApiResponse<>(currencyForecastService.forecastForWeek(currency, startDate)));
-    }
-
-    @GetMapping("/test/week")
-    public ResponseEntity<ApiResponse<?>> testModelForWeek(
-            @RequestParam String currency,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate) {
-        return ResponseEntity.ok(new ApiResponse<>(currencyForecastService.testModelForWeek(currency, startDate)));
+    @PostMapping("/test")
+    public ResponseEntity<ApiResponse<TestModelResponse>> testModel(@Valid @RequestBody TestModelRequest request) {
+        TestModelResponse response = currencyForecastService.testModel(
+                request.getCurrency(),
+                request.getStartDate(),
+                request.getDays()
+        );
+        return ResponseEntity.ok(new ApiResponse<>(response));
     }
 }
