@@ -10,8 +10,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 public class HistoryWebController {
@@ -31,27 +33,31 @@ public class HistoryWebController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
             Model model) {
 
-        // получаем список всех валют (для выпадающего списка)
         List<String> currencyList = getAvailableCurrencyList();
         model.addAttribute("currencies", currencyList);
 
-        // если значения не переданы, устанавливаем дефолтные
-        if (start == null) start = LocalDate.now().minusDays(7);
-        if (end == null) end = LocalDate.now();
-        if (currency == null) currency = "USD";
+        if (currency != null && start != null && end != null) {
+            List<CurrencyRate> rates = currencyDataService.getHistory(start, end).stream()
+                    .filter(rate -> rate.getCurrencyCode().equalsIgnoreCase(currency))
+                    .sorted(Comparator.comparing(CurrencyRate::getDate))
+                    .collect(Collectors.toList());
 
-        // Создаем финальную переменную для использования внутри лямбда-выражения
-        final String selectedCurrency = currency;
+            List<String> dates = rates.stream()
+                    .map(rate -> rate.getDate().toString())
+                    .toList();
 
-        // Фильтрация по валюте
-        List<CurrencyRate> rates = currencyDataService.getHistory(start, end).stream()
-                .filter(rate -> rate.getCurrencyCode().equalsIgnoreCase(selectedCurrency)) // фильтруем по выбранной валюте
-                .toList();
+            List<BigDecimal> values = rates.stream()
+                    .map(CurrencyRate::getRate)
+                    .toList();
 
-        model.addAttribute("rates", rates);
-        model.addAttribute("currency", selectedCurrency);
-        model.addAttribute("start", start);
-        model.addAttribute("end", end);
+            model.addAttribute("rates", rates);
+            model.addAttribute("dates", dates);
+            model.addAttribute("values", values);
+            model.addAttribute("start", start);
+            model.addAttribute("end", end);
+            model.addAttribute("currency", currency);
+        }
+
         return "history";
     }
 
