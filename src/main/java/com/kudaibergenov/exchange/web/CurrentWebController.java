@@ -9,15 +9,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import java.util.*;
 
 @Controller
-public class CurrencyWebController {
+public class CurrentWebController {
 
     private final FxKgService fxKgService;
 
-    public CurrencyWebController(FxKgService fxKgService) {
+    public CurrentWebController(FxKgService fxKgService) {
         this.fxKgService = fxKgService;
     }
 
-    @GetMapping("/currency/current")
+    @GetMapping("/current")
     public String showCurrentRates(Model model) {
         JsonNode centralRates = fxKgService.getCentralBankRates();
         JsonNode currentRates = fxKgService.getCurrentRates();

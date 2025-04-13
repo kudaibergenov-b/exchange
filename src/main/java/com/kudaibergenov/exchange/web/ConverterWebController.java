@@ -7,6 +7,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Controller
@@ -37,6 +39,7 @@ public class ConverterWebController {
             Model model
     ) {
         var result = converterService.convert(from, to, amount);
+        var reversed = result.getToRate() / result.getFromRate();
         List<String> currencies = getCurrencyCodes();
 
         model.addAttribute("currencies", currencies);
@@ -44,6 +47,7 @@ public class ConverterWebController {
         model.addAttribute("to", to);
         model.addAttribute("amount", amount);
         model.addAttribute("result", result);
+        model.addAttribute("reversed", round(reversed));
         model.addAttribute("averageRates", fxKgService.getAverageRates());
         model.addAttribute("bestRates", fxKgService.getBestRates());
 
@@ -60,5 +64,9 @@ public class ConverterWebController {
         });
         Collections.sort(codes);
         return codes;
+    }
+
+    private double round(double value) {
+        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP).doubleValue();
     }
 }

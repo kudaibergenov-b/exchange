@@ -6,6 +6,7 @@
 
 <div class="container mt-5">
     <h2 class="text-center mb-4">Currency Converter</h2>
+    <p class="text-center">Choose currency and amount to be converted.</p>
 
     <form th:action="@{/converter}" method="post" class="row g-3 justify-content-center">
         <div class="col-md-3">
@@ -38,10 +39,10 @@
     <div class="mt-4" th:if="${result != null}">
         <h4 class="text-center">Conversion Result</h4>
         <p class="text-center fs-5" th:text="${result.amount} + ' ' + ${result.from} + ' = ' + ${result.convertedAmount} + ' ' + ${result.to}"></p>
-        <p class="text-center text-muted" th:text="'1 ' + ${result.from} + ' = ' + (${result.toRate} / ${result.fromRate}) + ' ' + ${result.to}"></p>
+        <p class="text-center text-muted" th:text="'1 ' + ${result.to} + ' = ' + (${reversed}) + ' ' + ${result.from}"></p>
     </div>
 
-    <h4 class="mt-5">Average Exchange Rates (FX.KG)</h4>
+    <h4 class="mt-5">Average Exchange Rates</h4>
     <table class="table table-striped table-bordered">
         <thead class="table-dark">
         <tr>
@@ -50,15 +51,16 @@
         </tr>
         </thead>
         <tbody>
-        <tr th:each="entry : ${averageRates.fields()}">
+        <tr th:each="entry : ${averageRates.fields()}"
+            th:if="${!T(java.util.List).of('id', 'title', 'slug', 'updated_at', 'created_at', 'type').contains(entry.key)}">
             <td th:text="${entry.key.toUpperCase()}"></td>
-            <td th:text="${entry.value}"></td>
+            <td th:text="${entry.value.asDouble()}"></td>
         </tr>
         </tbody>
     </table>
 
     <!-- Таблица с лучшими курсами -->
-    <h4 class="mt-5">Best Exchange Rates (FX.KG)</h4>
+    <h4 class="mt-5">Best Exchange Rates</h4>
     <table class="table table-striped table-bordered">
         <thead class="table-dark">
         <tr>
@@ -67,9 +69,10 @@
         </tr>
         </thead>
         <tbody>
-        <tr th:each="entry : ${bestRates.fields()}">
+        <tr th:each="entry : ${averageRates.fields()}"
+            th:if="${!T(java.util.List).of('id', 'title', 'slug', 'updated_at', 'created_at', 'type').contains(entry.key)}">
             <td th:text="${entry.key.toUpperCase()}"></td>
-            <td th:text="${entry.value}"></td>
+            <td th:text="${entry.value.asDouble()}"></td>
         </tr>
         </tbody>
     </table>

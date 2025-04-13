@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.kudaibergenov.exchange.dto.ConversionResult;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 @Service
 public class CurrencyConverterService {
 
@@ -28,7 +31,7 @@ public class CurrencyConverterService {
                     amount,
                     fromRate,
                     toRate,
-                    convertedAmount
+                    round(convertedAmount)
             );
 
         } catch (Exception e) {
@@ -46,5 +49,9 @@ public class CurrencyConverterService {
             throw new IllegalArgumentException("Currency '" + currency + "' not found in FX.KG rates");
         }
         return currencyNode.asDouble();
+    }
+
+    private double round(double value) {
+        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP).doubleValue();
     }
 }
