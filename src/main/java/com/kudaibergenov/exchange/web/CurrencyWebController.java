@@ -19,16 +19,46 @@ public class CurrencyWebController {
 
     @GetMapping("/currency/current")
     public String showCurrentRates(Model model) {
-        JsonNode rates = fxKgService.getCentralBankRates();
-        Map<String, String> currencyMap = new TreeMap<>();
+        JsonNode centralRates = fxKgService.getCentralBankRates();
+        JsonNode currentRates = fxKgService.getCurrentRates();
 
-        rates.fieldNames().forEachRemaining(code -> {
-            if (!List.of("id", "created_at", "updated_at", "is_current").contains(code)) {
-                currencyMap.put(code.toUpperCase(), rates.get(code).asText());
+        List<String> targetBanks = List.of("Элдик банк", "КИКБ", "Оптима Банк", "КБ КЫРГЫЗСТАН");
+
+        List<Map<String, Object>> banks = new ArrayList<>();
+
+        currentRates.forEach(bankNode -> {
+            String title = bankNode.get("title").asText();
+            if (targetBanks.contains(title)) {
+                JsonNode rates = bankNode.get("rates");
+                if (rates != null && rates.isArray()) {
+                    for (JsonNode rateEntry : rates) {
+                        if ("regular".equals(rateEntry.get("type").asText())) {
+                            Map<String, Object> bank = new HashMap<>();
+                            bank.put("title", title);
+                            Map<String, Map<String, String>> currencies = new LinkedHashMap<>();
+
+                            for (String code : List.of("usd", "eur", "rub")) {
+                                String buy = rateEntry.path("buy_" + code).asText(null);
+                                String sell = rateEntry.path("sell_" + code).asText(null);
+                                if (buy != null && sell != null) {
+                                    currencies.put(code.toUpperCase(), Map.of(
+                                            "buy", buy,
+                                            "sell", sell
+                                    ));
+                                }
+                            }
+
+                            bank.put("currencies", currencies);
+                            banks.add(bank);
+                            break; // только один "regular"
+                        }
+                    }
+                }
             }
         });
 
-        model.addAttribute("rates", currencyMap);
+        model.addAttribute("rates", centralRates);
+        model.addAttribute("banks", banks);
         return "current";
     }
 }

@@ -6,6 +6,7 @@
 
 <h2 class="text-center">Current Exchange Rates (NBKR / FX.KG)</h2>
 
+<!-- КУРСЫ НБКР -->
 <table class="table table-bordered table-hover mt-4">
     <thead class="table-dark">
     <tr>
@@ -14,12 +15,36 @@
     </tr>
     </thead>
     <tbody>
-    <tr th:each="entry : ${rates}">
-        <td th:text="${entry.key}"></td>
+    <tr th:each="entry : ${rates.fields()}">
+        <td th:text="${entry.key.toUpperCase()}"></td>
         <td th:text="${entry.value}"></td>
     </tr>
     </tbody>
 </table>
+
+<!-- КУРСЫ БАНКОВ -->
+<h2 class="text-center mt-5">Commercial Banks Exchange Rates</h2>
+
+<div th:each="bank : ${banks}" class="mt-4">
+    <h4 th:text="${bank.title}"></h4>
+    <table class="table table-bordered table-sm">
+        <thead class="table-light">
+        <tr>
+            <th>Currency</th>
+            <th>Buy</th>
+            <th>Sell</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="entry : ${bank.currencies.entrySet()}">
+            <td th:text="${entry.key}"></td>
+            <td th:text="${entry.value.buy}"></td>
+            <td th:text="${entry.value.sell}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
 
 <div th:replace="fragments/footer :: footer"></div>
 </body>
