@@ -13,12 +13,14 @@ public class ForecastResponse {
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final List<BigDecimal> predictedRates;
+    private final List<BigDecimal> historyRates;
 
-    public ForecastResponse(String currency, LocalDate startDate, LocalDate endDate, List<BigDecimal> predictedRates) {
+    public ForecastResponse(String currency, LocalDate startDate, LocalDate endDate,
+                            List<BigDecimal> predictedRates, List<BigDecimal> historyRates) {
         this.currency = currency;
         this.startDate = startDate;
         this.endDate = endDate;
         this.predictedRates = predictedRates;
+        this.historyRates = historyRates;
     }
-
 }

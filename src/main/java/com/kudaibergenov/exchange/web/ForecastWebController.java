@@ -10,9 +10,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.IntStream;
 
 @Controller
 public class ForecastWebController {
@@ -26,29 +26,41 @@ public class ForecastWebController {
     }
 
     @GetMapping("/forecast")
-    public String forecastForm(Model model) {
-        model.addAttribute("currencies", getAvailableCurrencies());
+    public String showForecastForm(Model model) {
         model.addAttribute("request", new ForecastRequest());
+        model.addAttribute("currencies", getAvailableCurrencies());
         return "forecast";
     }
 
     @PostMapping("/forecast")
-    public String predictForecast(@ModelAttribute @Valid ForecastRequest request, Model model) {
-        ForecastResponse response = forecastService.forecast(request.getCurrency(), request.getStartDate(), request.getDays());
+    public String handleForecast(@ModelAttribute("request") @Valid ForecastRequest request, Model model) {
+        ForecastResponse response = forecastService.forecast(
+                request.getCurrency(),
+                request.getStartDate(),
+                request.getDays()
+        );
 
-        List<String> dates = new ArrayList<>();
-        for (int i = 0; i < response.getPredictedRates().size(); i++) {
-            dates.add(response.getStartDate().plusDays(i).toString());
-        }
+        // Генерация дат для прогноза
+        List<String> forecastDates = IntStream.range(0, request.getDays())
+                .mapToObj(i -> request.getStartDate().plusDays(i).toString())
+                .toList();
 
-        model.addAttribute("request", request); // ✅ Добавь это!
+        // Генерация фиктивных дат для исторических данных
+        LocalDate historyStart = request.getStartDate().minusYears(2);
+        List<String> historyDates = IntStream.range(0, response.getHistoryRates().size())
+                .mapToObj(i -> historyStart.plusDays(i).toString())
+                .toList();
+
         model.addAttribute("currencies", getAvailableCurrencies());
         model.addAttribute("currency", response.getCurrency());
         model.addAttribute("start", response.getStartDate());
         model.addAttribute("end", response.getEndDate());
-        model.addAttribute("rates", response.getPredictedRates());
-        model.addAttribute("dates", dates);
-        model.addAttribute("values", response.getPredictedRates());
+
+        model.addAttribute("predictedRates", response.getPredictedRates());
+        model.addAttribute("predictedLabels", forecastDates);
+
+        model.addAttribute("historyRates", response.getHistoryRates());
+        model.addAttribute("historyLabels", historyDates);
 
         return "forecast";
     }

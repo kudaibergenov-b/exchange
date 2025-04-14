@@ -27,15 +27,23 @@ public class CurrencyForecastService {
     public ForecastResponse forecast(String currency, LocalDate startDate, int days) {
         validateDays(days);
 
-        List<BigDecimal> trainingRates = getTrainingRates(currency, startDate);
-        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, days, 1, 1, 0);
+        LocalDate trainingStartDate = startDate.minusYears(2);
+        LocalDate lastTrainingDate = startDate.minusDays(1);
+
+        List<BigDecimal> historyRates = getHistoryRates(currency, trainingStartDate, lastTrainingDate);
+        if (historyRates.size() < 100) {
+            throw new IllegalStateException("Недостаточно данных для прогнозирования.");
+        }
+
+        BigDecimal[] predictedRates = ArimaModel.predict(historyRates, days, 1, 1, 0);
         LocalDate endDate = startDate.plusDays(days - 1);
 
         return new ForecastResponse(
                 currency,
                 startDate,
                 endDate,
-                Arrays.asList(predictedRates)
+                Arrays.asList(predictedRates),
+                historyRates
         );
     }
 
@@ -70,16 +78,8 @@ public class CurrencyForecastService {
         return new TestModelResponse(currency, startDate, endDate, actualRates, predictedRates, mae);
     }
 
-    private List<BigDecimal> getTrainingRates(String currency, LocalDate forecastStartDate) {
-        LocalDate lastTrainingDate = forecastStartDate.minusDays(1);
-        LocalDate trainingStartDate = lastTrainingDate.minusYears(2);
-
-        List<CurrencyRate> trainingData = repository.findByDateBetweenAndCurrencyCode(trainingStartDate, lastTrainingDate, currency);
-        if (trainingData.size() < 100) {
-            throw new IllegalStateException("Недостаточно данных для прогнозирования.");
-        }
-
-        return trainingData.stream()
+    public List<BigDecimal> getHistoryRates(String currency, LocalDate start, LocalDate end) {
+        return repository.findByDateBetweenAndCurrencyCode(start, end, currency).stream()
                 .sorted(Comparator.comparing(CurrencyRate::getDate))
                 .map(CurrencyRate::getRate)
                 .collect(Collectors.toList());
