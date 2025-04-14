@@ -3,6 +3,8 @@ package com.kudaibergenov.exchange.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.kudaibergenov.exchange.service.CurrencyConverterService;
 import com.kudaibergenov.exchange.service.FxKgService;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,11 +25,14 @@ public class ConverterWebController {
     }
 
     @GetMapping("/converter")
-    public String showConverterForm(Model model) {
+    public String showConverterPage(Model model) {
         List<String> currencies = getCurrencyCodes();
+        Map<String, RateDto> averageRates = parseRates(fxKgService.getAverageRates());
+        Map<String, RateDto> bestRates = parseRates(fxKgService.getBestRates());
+
         model.addAttribute("currencies", currencies);
-        model.addAttribute("averageRates", fxKgService.getAverageRates());
-        model.addAttribute("bestRates", fxKgService.getBestRates());
+        model.addAttribute("averageRates", averageRates);
+        model.addAttribute("bestRates", bestRates);
         return "converter";
     }
 
@@ -40,7 +45,10 @@ public class ConverterWebController {
     ) {
         var result = converterService.convert(from, to, amount);
         var reversed = result.getToRate() / result.getFromRate();
+
         List<String> currencies = getCurrencyCodes();
+        Map<String, RateDto> averageRates = parseRates(fxKgService.getAverageRates());
+        Map<String, RateDto> bestRates = parseRates(fxKgService.getBestRates());
 
         model.addAttribute("currencies", currencies);
         model.addAttribute("from", from);
@@ -48,8 +56,8 @@ public class ConverterWebController {
         model.addAttribute("amount", amount);
         model.addAttribute("result", result);
         model.addAttribute("reversed", round(reversed));
-        model.addAttribute("averageRates", fxKgService.getAverageRates());
-        model.addAttribute("bestRates", fxKgService.getBestRates());
+        model.addAttribute("averageRates", averageRates);
+        model.addAttribute("bestRates", bestRates);
 
         return "converter";
     }
@@ -64,6 +72,44 @@ public class ConverterWebController {
         });
         Collections.sort(codes);
         return codes;
+    }
+
+    private Map<String, RateDto> parseRates(JsonNode dataNode) {
+        Map<String, RateDto> map = new TreeMap<>();
+
+        if (dataNode == null || !dataNode.isObject()) return map;
+
+        Iterator<Map.Entry<String, JsonNode>> fields = dataNode.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String key = entry.getKey();
+
+            if (List.of("id", "updated_at", "type", "created_at", "slug", "title").contains(key)) continue;
+            if (!key.contains("_")) continue;
+
+            String[] parts = key.split("_");
+            if (parts.length != 2) continue;
+
+            String action = parts[0]; // "buy" or "sell"
+            String currency = parts[1].toUpperCase();
+
+            RateDto dto = map.getOrDefault(currency, new RateDto());
+            double value = entry.getValue().asDouble();
+
+            if (action.equals("buy")) dto.setBuy(value);
+            else if (action.equals("sell")) dto.setSell(value);
+
+            map.put(currency, dto);
+        }
+
+        return map;
+    }
+
+    @Getter
+    @Setter
+    public static class RateDto {
+        private double buy;
+        private double sell;
     }
 
     private double round(double value) {
