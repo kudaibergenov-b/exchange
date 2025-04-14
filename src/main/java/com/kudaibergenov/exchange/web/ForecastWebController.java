@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.IntStream;
@@ -40,15 +41,21 @@ public class ForecastWebController {
                 request.getDays()
         );
 
-        // Генерация дат для прогноза
-        List<String> forecastDates = IntStream.range(0, request.getDays())
-                .mapToObj(i -> request.getStartDate().plusDays(i).toString())
+        List<BigDecimal> fullHistory = response.getHistoryRates();
+
+        // Ограничим только последние 30 дней истории (или меньше, если данных недостаточно)
+        int historyLimit = 30;
+        List<BigDecimal> recentHistory = fullHistory.size() > historyLimit
+                ? fullHistory.subList(fullHistory.size() - historyLimit, fullHistory.size())
+                : fullHistory;
+
+        LocalDate historyStart = request.getStartDate().minusDays(recentHistory.size());
+        List<String> historyLabels = IntStream.range(0, recentHistory.size())
+                .mapToObj(i -> historyStart.plusDays(i).toString())
                 .toList();
 
-        // Генерация фиктивных дат для исторических данных
-        LocalDate historyStart = request.getStartDate().minusYears(2);
-        List<String> historyDates = IntStream.range(0, response.getHistoryRates().size())
-                .mapToObj(i -> historyStart.plusDays(i).toString())
+        List<String> forecastLabels = IntStream.range(0, request.getDays())
+                .mapToObj(i -> request.getStartDate().plusDays(i).toString())
                 .toList();
 
         model.addAttribute("currencies", getAvailableCurrencies());
@@ -57,10 +64,10 @@ public class ForecastWebController {
         model.addAttribute("end", response.getEndDate());
 
         model.addAttribute("predictedRates", response.getPredictedRates());
-        model.addAttribute("predictedLabels", forecastDates);
+        model.addAttribute("predictedLabels", forecastLabels);
 
-        model.addAttribute("historyRates", response.getHistoryRates());
-        model.addAttribute("historyLabels", historyDates);
+        model.addAttribute("historyRates", recentHistory);
+        model.addAttribute("historyLabels", historyLabels);
 
         return "forecast";
     }
