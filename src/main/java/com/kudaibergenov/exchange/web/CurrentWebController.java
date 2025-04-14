@@ -5,10 +5,12 @@ import com.kudaibergenov.exchange.service.FxKgService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.*;
 
 @Controller
+@RequestMapping("/current")
 public class CurrentWebController {
 
     private final FxKgService fxKgService;
@@ -17,13 +19,18 @@ public class CurrentWebController {
         this.fxKgService = fxKgService;
     }
 
-    @GetMapping("/current")
-    public String showCurrentRates(Model model) {
+    @GetMapping("/nbkr")
+    public String showNbkrRates(Model model) {
         JsonNode centralRates = fxKgService.getCentralBankRates();
+        model.addAttribute("rates", centralRates);
+        return "current-nbkr";
+    }
+
+    @GetMapping("/banks")
+    public String showBankRates(Model model) {
         JsonNode currentRates = fxKgService.getCurrentRates();
 
         List<String> targetBanks = List.of("Элдик банк", "КИКБ", "Оптима Банк", "КБ КЫРГЫЗСТАН");
-
         List<Map<String, Object>> banks = new ArrayList<>();
 
         currentRates.forEach(bankNode -> {
@@ -50,15 +57,14 @@ public class CurrentWebController {
 
                             bank.put("currencies", currencies);
                             banks.add(bank);
-                            break; // только один "regular"
+                            break;
                         }
                     }
                 }
             }
         });
 
-        model.addAttribute("rates", centralRates);
         model.addAttribute("banks", banks);
-        return "current";
+        return "current-banks";
     }
 }

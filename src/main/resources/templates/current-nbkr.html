@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/header :: head"></head>
+<body>
+<div th:replace="fragments/header :: body"></div>
+
+<h2 class="text-center">Current Exchange Rates according to the NBKR</h2>
+
+<table class="table table-bordered table-hover mt-4">
+    <thead class="table-dark">
+    <tr>
+        <th>Currency</th>
+        <th>Rate to KGS</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="entry : ${rates.fields()}"
+        th:if="${!T(java.util.List).of('id', 'is_current', 'updated_at', 'created_at').contains(entry.key)}">
+        <td th:text="${entry.key.toUpperCase()}"></td>
+        <td th:text="${entry.value.asDouble()}"></td>
+    </tr>
+    </tbody>
+</table>
+
+<div th:replace="fragments/footer :: footer"></div>
+</body>
+</html>

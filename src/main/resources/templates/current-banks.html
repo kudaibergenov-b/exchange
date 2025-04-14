@@ -4,26 +4,7 @@
 <body>
 <div th:replace="fragments/header :: body"></div>
 
-<h2 class="text-center">Current Exchange Rates via NBKR</h2>
-
-<!-- КУРСЫ НБКР -->
-<table class="table table-bordered table-hover mt-4">
-    <thead class="table-dark">
-    <tr>
-        <th>Currency</th>
-        <th>Rate to KGS</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="entry : ${rates.fields()}">
-        <td th:text="${entry.key.toUpperCase()}"></td>
-        <td th:text="${entry.value}"></td>
-    </tr>
-    </tbody>
-</table>
-
-<!-- КУРСЫ БАНКОВ -->
-<h2 class="text-center mt-5">Commercial Banks Exchange Rates</h2>
+<h2 class="text-center mt-4">Commercial Banks Exchange Rates</h2>
 
 <div th:each="bank : ${banks}" class="mt-4">
     <h4 th:text="${bank.title}"></h4>
@@ -44,7 +25,6 @@
         </tbody>
     </table>
 </div>
-
 
 <div th:replace="fragments/footer :: footer"></div>
 </body>
