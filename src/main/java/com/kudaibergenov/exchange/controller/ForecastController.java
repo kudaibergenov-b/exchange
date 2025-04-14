@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/forecast")
+@RequestMapping("/api/forecast")
 public class ForecastController {
 
     private final CurrencyForecastService currencyForecastService;
