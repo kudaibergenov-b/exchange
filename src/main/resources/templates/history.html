@@ -47,9 +47,12 @@
 
         <div class="text-end mt-3">
             <button id="downloadBtn" class="btn btn-outline-success">Download Chart as PNG</button>
+            <button id="downloadPdfBtn" class="btn btn-outline-secondary ms-2">Download Chart as PDF</button>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script th:inline="javascript">
             /*<![CDATA[*/
             const labels = [[${dates}]];
@@ -84,6 +87,27 @@
                 link.download = 'exchange-rate-chart.png';
                 link.click();
             });
+
+            document.getElementById("downloadPdfBtn").addEventListener("click", function () {
+                const canvas = document.getElementById('rateChart');
+
+                html2canvas(canvas).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({
+                        orientation: 'landscape',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                    pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 20);
+                    pdf.save('exchange-rate-chart.pdf');
+                });
+            });
             /*]]>*/
         </script>
 
@@ -103,6 +127,33 @@
             </tr>
             </tbody>
         </table>
+
+        <div class="text-end mt-3">
+            <button class="btn btn-outline-success me-2" onclick="downloadTableAsExcel()">Download Excel</button>
+            <button class="btn btn-outline-primary" onclick="downloadTableAsCSV()">Download CSV</button>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        <script>
+            function downloadTableAsExcel() {
+                const table = document.querySelector("table");
+                const workbook = XLSX.utils.table_to_book(table, { sheet: "Exchange History" });
+                XLSX.writeFile(workbook, "exchange-history.xlsx");
+            }
+
+            function downloadTableAsCSV() {
+                const table = document.querySelector("table");
+                const worksheet = XLSX.utils.table_to_sheet(table);
+                const csv = XLSX.utils.sheet_to_csv(worksheet);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "exchange-history.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        </script>
     </div>
 
     <div class="text-center mt-4">
