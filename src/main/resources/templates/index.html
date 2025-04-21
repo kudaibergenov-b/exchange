@@ -5,57 +5,70 @@
 <div th:replace="fragments/header :: body"></div>
 
 <div class="container mt-5">
-
-    <section class="bg-light p-5 rounded shadow-sm">
-        <h2 class="text-center mb-3">💱 Currency Forecast System</h2>
-        <p class="lead text-center">
-            Умная система, которая помогает вам анализировать, прогнозировать и конвертировать валюты на основе данных НБКР и коммерческих банков Кыргызстана.
+    <!-- Intro Section -->
+    <section class="bg-white p-5 rounded shadow-sm border">
+        <h2 class="text-center mb-3">Currency Forecast System</h2>
+        <p class="lead text-center text-muted">
+            A smart web-based solution for analyzing, forecasting, and converting currencies based on data from the National Bank and commercial banks of Kyrgyzstan.
         </p>
-        <ul class="list-group list-group-flush text-center mt-4">
-            <li class="list-group-item">📈 Прогнозирование курса валют с помощью ARIMA</li>
-            <li class="list-group-item">💹 Исторические графики и статистика</li>
-            <li class="list-group-item">💱 Умный конвертер валют</li>
-            <li class="list-group-item">🏦 Курс НБКР и лучших банков</li>
-        </ul>
+        <div class="row text-center mt-4">
+            <div class="col-md-3">
+                <i class="bi bi-graph-up-arrow fs-2 text-primary"></i>
+                <p class="mt-2">Currency forecasting using ARIMA</p>
+            </div>
+            <div class="col-md-3">
+                <i class="bi bi-clock-history fs-2 text-secondary"></i>
+                <p class="mt-2">Historical analysis & trends</p>
+            </div>
+            <div class="col-md-3">
+                <i class="bi bi-currency-exchange fs-2 text-success"></i>
+                <p class="mt-2">Intelligent currency converter</p>
+            </div>
+            <div class="col-md-3">
+                <i class="bi bi-bank fs-2 text-info"></i>
+                <p class="mt-2">Rates from NBKR and banks</p>
+            </div>
+        </div>
     </section>
 
+    <!-- Feature Cards -->
     <div class="row mt-5 text-center">
         <div class="col-md-3">
-            <div class="card shadow-sm">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">🔮 Прогноз</h5>
-                    <p class="card-text">Посмотри прогноз курса валют на любой период.</p>
-                    <a href="/forecast" class="btn btn-primary w-100">Перейти</a>
+                    <h5 class="card-title">Forecast</h5>
+                    <p class="card-text text-muted">Generate currency rate forecasts using time series analysis.</p>
+                    <a href="/forecast" class="btn btn-outline-primary w-100">Open</a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">📊 История</h5>
-                    <p class="card-text">Анализируй изменения курса за любой период.</p>
-                    <a href="/history" class="btn btn-secondary w-100">Перейти</a>
+                    <h5 class="card-title">History</h5>
+                    <p class="card-text text-muted">Explore historical exchange rates with visual graphs.</p>
+                    <a href="/history" class="btn btn-outline-secondary w-100">Open</a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">💱 Конвертер</h5>
-                    <p class="card-text">Узнай, сколько стоит твоя валюта в KGS.</p>
-                    <a href="/converter" class="btn btn-success w-100">Перейти</a>
+                    <h5 class="card-title">Converter</h5>
+                    <p class="card-text text-muted">Convert currencies instantly with real-time rates.</p>
+                    <a href="/converter" class="btn btn-outline-success w-100">Open</a>
                 </div>
             </div>
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">🏦 Курсы</h5>
-                    <p class="card-text">Смотри актуальные курсы НБКР и банков.</p>
-                    <a href="/current/nbkr" class="btn btn-info w-100">Перейти</a>
+                    <h5 class="card-title">Rates</h5>
+                    <p class="card-text text-muted">View current rates from NBKR and commercial banks.</p>
+                    <a href="/current/nbkr" class="btn btn-outline-info w-100">Open</a>
                 </div>
             </div>
         </div>
@@ -63,5 +76,8 @@
 </div>
 
 <div th:replace="fragments/footer :: footer"></div>
+
+<!-- Bootstrap Icons CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 </body>
 </html>

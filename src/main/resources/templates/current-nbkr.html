@@ -4,28 +4,76 @@
 <body>
 <div th:replace="fragments/header :: body"></div>
 
-<h2 class="text-center">Current Exchange Rates according to the NBKR</h2>
+<div class="container mt-5">
+    <div class="bg-light p-4 rounded shadow-sm border">
+        <h2 class="text-center mb-2">NBKR Official Exchange Rates</h2>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/6.7.0/css/flag-icons.min.css">
+        <p class="text-center text-muted">Updated daily — based on data from the <strong>National Bank of the Kyrgyz Republic</strong>.</p>
+    </div>
 
-<table class="table table-bordered table-hover mt-4">
-    <thead class="table-dark">
-    <tr>
-        <th>Currency</th>
-        <th>Rate to KGS</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="entry : ${rates.fields()}"
-        th:if="${!T(java.util.List).of('id', 'is_current', 'updated_at', 'created_at').contains(entry.key)}">
-        <td th:text="${entry.key.toUpperCase()}"></td>
-        <td th:text="${entry.value.asDouble()}"></td>
-    </tr>
-    </tbody>
-</table>
+    <div class="card mt-4 shadow-sm">
+        <div class="card-body">
+            <table id="nbkrTable" class="table table-striped table-hover align-middle text-center">
+                <thead class="table-dark">
+                <tr>
+                    <th>Currency</th>
+                    <th>Rate to KGS</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="entry : ${rates.fields()}"
+                    th:if="${!T(java.util.List).of('id', 'is_current', 'updated_at', 'created_at').contains(entry.key)}">
 
-<div class="text-center mt-4">
-    <a th:href="@{/}" class="btn btn-outline-secondary">← Back to Home</a>
+                    <td>
+                        <span th:utext="${@flagMapper.flagClass(entry.key)}"></span>
+                        <span th:text="${entry.key.toUpperCase()}"></span>
+                    </td>
+
+                    <td th:text="${entry.value.asDouble()}"></td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="text-end mt-3">
+                <button class="btn btn-outline-success me-2" onclick="downloadNBKRTable()">Download as Excel</button>
+                <button class="btn btn-outline-secondary" onclick="downloadNBKRTablePDF()">Download as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a th:href="@{/}" class="btn btn-outline-primary">← Back to Home</a>
+    </div>
 </div>
 
 <div th:replace="fragments/footer :: footer"></div>
+
+<!-- СКРИПТЫ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script>
+    function downloadNBKRTable() {
+        const table = document.getElementById('nbkrTable');
+        const wb = XLSX.utils.table_to_book(table, { sheet: "NBKR Rates" });
+        XLSX.writeFile(wb, 'nbkr-exchange-rates.xlsx');
+    }
+
+    function downloadNBKRTablePDF() {
+        html2canvas(document.getElementById('nbkrTable')).then(canvas => {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const imgData = canvas.toDataURL('image/png');
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 20, 20, pdfWidth - 40, pdfHeight);
+            pdf.save("nbkr-exchange-rates.pdf");
+        });
+    }
+</script>
 </body>
 </html>

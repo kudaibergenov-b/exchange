@@ -36,10 +36,22 @@
         </div>
     </form>
 
-    <div class="mt-4" th:if="${result != null}">
-        <h4 class="text-center">Conversion Result</h4>
-        <p class="text-center fs-5" th:text="${result.amount} + ' ' + ${result.from} + ' = ' + ${result.convertedAmount} + ' ' + ${result.to}"></p>
-        <p class="text-center text-muted" th:text="'1 ' + ${result.to} + ' = ' + (${reversed}) + ' ' + ${result.from}"></p>
+    <div class="mt-5 d-flex justify-content-center" th:if="${result != null}">
+        <div class="card shadow-lg text-center" style="max-width: 500px; width: 100%;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Conversion Result</h5>
+            </div>
+            <div class="card-body">
+                <h3 class="card-title">
+                    <span th:text="${#numbers.formatDecimal(result.amount, 1, 'COMMA', 2, 'POINT')}"></span>
+                    <strong th:text="${result.from}"></strong>
+                    =
+                    <span class="text-success" th:text="${#numbers.formatDecimal(result.convertedAmount, 1, 'COMMA', 2, 'POINT')}"></span>
+                    <strong th:text="${result.to}"></strong>
+                </h3>
+                <p class="card-text text-muted mt-2" th:text="'1 ' + ${result.to} + ' ≈ ' + ${reversed} + ' ' + ${result.from}"></p>
+            </div>
+        </div>
     </div>
 
     <!-- Таблица со средними курсами -->
