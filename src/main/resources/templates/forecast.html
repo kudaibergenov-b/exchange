@@ -33,7 +33,7 @@
 
     <!-- График -->
     <div th:if="${predictedRates != null && !predictedRates.isEmpty()}">
-        <h4 class="text-center mt-4" th:text="'Forecast for ' + ${currency} + ' (' + ${start} + ' - ' + ${end} + ')'"></h4>
+        <h4 class="text-center mt-4" th:text="'Forecast for ' + ${currency} + ' in KGS (' + ${start} + ' - ' + ${end} + ')'"></h4>
         <canvas id="forecastChart" width="900" height="450"></canvas>
 
         <div class="text-end mt-3">

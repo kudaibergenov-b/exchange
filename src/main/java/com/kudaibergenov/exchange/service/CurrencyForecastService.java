@@ -35,7 +35,9 @@ public class CurrencyForecastService {
             throw new IllegalStateException("Недостаточно данных для прогнозирования.");
         }
 
-        BigDecimal[] predictedRates = ArimaModel.predict(historyRates, days, 1, 1, 0);
+        int[] bestParams = ArimaModel.findBestParams(historyRates);
+        BigDecimal[] predictedRates = ArimaModel.predict(historyRates, days, bestParams[0], bestParams[1], bestParams[2]);
+
         LocalDate endDate = startDate.plusDays(days - 1);
 
         return new ForecastResponse(
@@ -67,13 +69,15 @@ public class CurrencyForecastService {
                 .map(CurrencyRate::getRate)
                 .toList();
 
-        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, actualRates.size(), 1, 1, 0);
+        int[] bestParams = ArimaModel.findBestParams(trainingRates);
+        BigDecimal[] predictedRates = ArimaModel.predict(trainingRates, actualRates.size(), bestParams[0], bestParams[1], bestParams[2]);
         BigDecimal mae = calculateMAE(actualRates, predictedRates);
 
-        log.info("Тестирование модели ARIMA(1,1,0) для {} за период: {} - {}", currency, startDate, endDate);
+        log.info("Тестирование модели ARIMA для {} за период: {} - {}", currency, startDate, endDate);
         for (int i = 0; i < actualRates.size(); i++) {
             log.info("Дата: {} | Факт: {} | Прогноз: {}", actualRates.get(i).getDate(), actualRates.get(i).getRate(), predictedRates[i]);
         }
+        log.info("Средняя ошибка {}", mae);
 
         return new TestModelResponse(currency, startDate, endDate, actualRates, predictedRates, mae);
     }
