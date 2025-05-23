@@ -1,25 +1,22 @@
-# Этап 1: сборка проекта с помощью Maven и JDK 11
-FROM maven:3.8.7-openjdk-17-slim AS build
+# Этап 1: Сборка с Maven
+FROM eclipse-temurin:17 AS builder
 
 WORKDIR /app
 
-# Копируем pom.xml и скачиваем зависимости (чтобы кешировать их, если pom.xml не меняется)
-COPY pom.xml .
+# Копируем файлы проекта
+COPY . .
 
-RUN mvn dependency:go-offline
+# Скачиваем зависимости и собираем проект
+RUN ./mvnw clean package -DskipTests
 
-# Копируем исходники и собираем проект (пропускаем тесты для ускорения)
-COPY src ./src
-
-RUN mvn clean package -DskipTests
-
-# Этап 2: запуск скомпилированного приложения с помощью JRE 11
-FROM openjdk:17-jre-slim
+# Этап 2: Финальный образ с JRE
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
-# Копируем скомпилированный jar из этапа сборки
-COPY --from=build /app/target/*.jar app.jar
+# Копируем jar из предыдущего этапа
+COPY --from=builder /app/target/*.jar app.jar
 
-# Команда запуска приложения
-CMD ["java", "-jar", "app.jar"]
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
