@@ -3,6 +3,8 @@ package com.kudaibergenov.exchange.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.kudaibergenov.exchange.dto.ForecastRequest;
 import com.kudaibergenov.exchange.dto.ForecastResponse;
+import com.kudaibergenov.exchange.dto.TestModelResponse;
+import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.service.CurrencyForecastService;
 import com.kudaibergenov.exchange.service.FxKgService;
 import jakarta.validation.Valid;
@@ -43,7 +45,6 @@ public class ForecastWebController {
 
         List<BigDecimal> fullHistory = response.getHistoryRates();
 
-        // Ограничим только последние 30 дней истории (или меньше, если данных недостаточно)
         int historyLimit = 30;
         List<BigDecimal> recentHistory = fullHistory.size() > historyLimit
                 ? fullHistory.subList(fullHistory.size() - historyLimit, fullHistory.size())
@@ -70,6 +71,41 @@ public class ForecastWebController {
         model.addAttribute("historyLabels", historyLabels);
 
         return "forecast";
+    }
+
+    @GetMapping("/forecast/test")
+    public String showTestForm(Model model) {
+        model.addAttribute("request", new ForecastRequest());
+        model.addAttribute("currencies", getAvailableCurrencies());
+        return "forecast-test";
+    }
+
+    @PostMapping("/forecast/test")
+    public String handleForecastTest(@ModelAttribute("request") @Valid ForecastRequest request, Model model) {
+        TestModelResponse response = forecastService.testModel(
+                request.getCurrency(),
+                request.getStartDate(),
+                request.getDays()
+        );
+
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < response.getActualRates().size(); i++) {
+            labels.add(response.getStartDate().plusDays(i).toString());
+        }
+
+        model.addAttribute("currencies", getAvailableCurrencies());
+        model.addAttribute("request", request);
+        model.addAttribute("currency", response.getCurrency());
+        model.addAttribute("start", response.getStartDate());
+        model.addAttribute("end", response.getEndDate());
+        model.addAttribute("labels", labels);
+
+        model.addAttribute("actualRates", response.getActualRates().stream()
+                .map(CurrencyRate::getRate).toList());
+        model.addAttribute("predictedRates", Arrays.asList(response.getPredictedRates()));
+        model.addAttribute("mae", response.getMae());
+
+        return "forecast-test";
     }
 
     private List<String> getAvailableCurrencies() {
