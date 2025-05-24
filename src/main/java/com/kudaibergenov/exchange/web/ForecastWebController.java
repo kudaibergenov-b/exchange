@@ -1,12 +1,10 @@
 package com.kudaibergenov.exchange.web;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.kudaibergenov.exchange.dto.ForecastRequest;
 import com.kudaibergenov.exchange.dto.ForecastResponse;
 import com.kudaibergenov.exchange.dto.TestModelResponse;
 import com.kudaibergenov.exchange.model.CurrencyRate;
 import com.kudaibergenov.exchange.service.CurrencyForecastService;
-import com.kudaibergenov.exchange.service.FxKgService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,11 +19,9 @@ import java.util.stream.IntStream;
 public class ForecastWebController {
 
     private final CurrencyForecastService forecastService;
-    private final FxKgService fxKgService;
 
-    public ForecastWebController(CurrencyForecastService forecastService, FxKgService fxKgService) {
+    public ForecastWebController(CurrencyForecastService forecastService) {
         this.forecastService = forecastService;
-        this.fxKgService = fxKgService;
     }
 
     @GetMapping("/forecast")
@@ -109,18 +105,6 @@ public class ForecastWebController {
     }
 
     private List<String> getAvailableCurrencies() {
-        try {
-            JsonNode node = fxKgService.getCentralBankRates();
-            List<String> codes = new ArrayList<>();
-            node.fieldNames().forEachRemaining(code -> {
-                if (!List.of("id", "created_at", "updated_at", "is_current").contains(code)) {
-                    codes.add(code.toUpperCase());
-                }
-            });
-            Collections.sort(codes);
-            return codes;
-        } catch (Exception e) {
-            return List.of("USD", "EUR", "RUB");
-        }
+        return List.of("USD", "EUR", "RUB", "KZT");
     }
 }

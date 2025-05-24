@@ -16,27 +16,29 @@ public class CurrencyConverterService {
         this.fxKgService = fxKgService;
     }
 
-    public ConversionResult convert(String from, String to, double amount) {
-        try {
+    public ConversionResult convert(String from, String to, double amount, Double customFromRate, Double customToRate) {
+        double fromRate;
+        double toRate;
+
+        if (customFromRate != null && customToRate != null) {
+            fromRate = customFromRate;
+            toRate = customToRate;
+        } else {
             JsonNode root = fxKgService.getCentralBankRates();
-
-            double fromRate = getCurrencyRate(root, from);
-            double toRate = getCurrencyRate(root, to);
-
-            double convertedAmount = amount * (fromRate / toRate);
-
-            return new ConversionResult(
-                    from.toUpperCase(),
-                    to.toUpperCase(),
-                    amount,
-                    fromRate,
-                    toRate,
-                    round(convertedAmount)
-            );
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error during currency conversion", e);
+            fromRate = getCurrencyRate(root, from);
+            toRate = getCurrencyRate(root, to);
         }
+
+        double convertedAmount = amount * (fromRate / toRate);
+
+        return new ConversionResult(
+                from.toUpperCase(),
+                to.toUpperCase(),
+                amount,
+                fromRate,
+                toRate,
+                round(convertedAmount)
+        );
     }
 
     private double getCurrencyRate(JsonNode root, String currency) {

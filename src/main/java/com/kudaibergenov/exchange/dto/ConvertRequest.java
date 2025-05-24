@@ -17,4 +17,7 @@ public class ConvertRequest {
     @Positive(message = "Amount must be greater than 0")
     private double amount;
 
+    private Double customFromRate;
+
+    private Double customToRate;
 }

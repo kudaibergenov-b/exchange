@@ -22,7 +22,14 @@ public class ConverterController {
     public ResponseEntity<ApiResponse<ConversionResult>> convert(
             @RequestBody @Valid ConvertRequest request
     ) {
-        ConversionResult result = converterService.convert(request.getFrom(), request.getTo(), request.getAmount());
+        ConversionResult result = converterService.convert(
+                request.getFrom(),
+                request.getTo(),
+                request.getAmount(),
+                request.getCustomFromRate(),
+                request.getCustomToRate()
+        );
+
         return ResponseEntity.ok(new ApiResponse<>(result));
     }
 }

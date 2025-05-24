@@ -1,6 +1,7 @@
 package com.kudaibergenov.exchange.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.kudaibergenov.exchange.dto.ConversionResult;
 import com.kudaibergenov.exchange.service.CurrencyConverterService;
 import com.kudaibergenov.exchange.service.FxKgService;
 import lombok.Getter;
@@ -41,10 +42,12 @@ public class ConverterWebController {
             @RequestParam String from,
             @RequestParam String to,
             @RequestParam double amount,
+            @RequestParam(required = false) Double customFromRate,
+            @RequestParam(required = false) Double customToRate,
             Model model
     ) {
-        var result = converterService.convert(from, to, amount);
-        var reversed = result.getToRate() / result.getFromRate();
+        ConversionResult result = converterService.convert(from, to, amount, customFromRate, customToRate);
+        double reversed = result.getToRate() / result.getFromRate();
 
         List<String> currencies = getCurrencyCodes();
         Map<String, RateDto> averageRates = parseRates(fxKgService.getAverageRates());
@@ -54,6 +57,9 @@ public class ConverterWebController {
         model.addAttribute("from", from);
         model.addAttribute("to", to);
         model.addAttribute("amount", amount);
+        model.addAttribute("customFromRate", customFromRate);
+        model.addAttribute("customToRate", customToRate);
+        model.addAttribute("customRateCheck", customFromRate != null && customToRate != null);
         model.addAttribute("result", result);
         model.addAttribute("reversed", round(reversed));
         model.addAttribute("averageRates", averageRates);
