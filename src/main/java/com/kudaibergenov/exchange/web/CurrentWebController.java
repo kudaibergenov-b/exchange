@@ -29,11 +29,12 @@ public class CurrentWebController {
     @GetMapping("/banks")
     public String showBankRates(Model model) {
         JsonNode currentRates = fxKgService.getCurrentRates();
-
         List<Map<String, Object>> banks = new ArrayList<>();
 
         currentRates.forEach(bankNode -> {
-            String title = bankNode.get("title").asText(); // название банка
+            String title = bankNode.get("title").asText();
+            String slug = bankNode.path("slug").asText(null);
+            String website = bankNode.path("website_url").asText(null);
             JsonNode rates = bankNode.get("rates");
 
             if (rates != null && rates.isArray()) {
@@ -41,9 +42,10 @@ public class CurrentWebController {
                     if ("regular".equals(rateEntry.path("type").asText())) {
                         Map<String, Object> bank = new HashMap<>();
                         bank.put("title", title);
+                        bank.put("slug", slug);
+                        bank.put("website", website);
 
                         Map<String, Map<String, String>> currencies = new LinkedHashMap<>();
-
                         for (String code : List.of("usd", "eur", "rub")) {
                             String buy = rateEntry.path("buy_" + code).asText(null);
                             String sell = rateEntry.path("sell_" + code).asText(null);
@@ -59,7 +61,7 @@ public class CurrentWebController {
                             bank.put("currencies", currencies);
                             banks.add(bank);
                         }
-                        break; // используем только один "regular"
+                        break;
                     }
                 }
             }

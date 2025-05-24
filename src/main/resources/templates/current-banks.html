@@ -7,7 +7,21 @@
 <h2 class="text-center mt-4">Commercial Banks Exchange Rates</h2>
 
 <div th:each="bank : ${banks}" class="mt-4">
-    <h4 th:text="${bank.title}"></h4>
+    <h4 class="d-flex align-items-center gap-2">
+        <span class="fw-bold fs-5" th:text="${bank.title}"></span>
+
+        <span class="text-secondary small" th:if="${bank.slug != null}" th:text="'/' + ${bank.slug}"></span>
+
+        <a th:if="${bank.website != null}"
+           th:href="${bank.website}"
+           class="text-decoration-none text-muted small"
+           target="_blank"
+           rel="noopener"
+           title="Visit website">
+            🌐
+        </a>
+    </h4>
+
     <table class="table table-bordered table-sm">
         <thead class="table-light">
         <tr>
