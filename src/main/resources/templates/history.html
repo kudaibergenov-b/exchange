@@ -41,7 +41,7 @@
     </div>
 
     <div th:if="${!#lists.isEmpty(rates)}">
-        <h4 class="mt-4" th:text="'Exchange rate chart for ' + ${currency} + ' (' + ${start} + ' - ' + ${end} + ')'"></h4>
+        <h4 class="text-center mt-4" th:text="'Exchange rate chart for ' + ${currency} + ' (' + ${start} + ' - ' + ${end} + ')'"></h4>
 
         <canvas id="rateChart" width="800" height="400"></canvas>
 
