@@ -62,18 +62,6 @@ public class HistoryWebController {
     }
 
     private List<String> getAvailableCurrencyList() {
-        try {
-            JsonNode node = fxKgService.getCentralBankRates();
-            List<String> codes = new ArrayList<>();
-            node.fieldNames().forEachRemaining(code -> {
-                if (!List.of("id", "created_at", "updated_at", "is_current").contains(code)) {
-                    codes.add(code.toUpperCase());
-                }
-            });
-            Collections.sort(codes);
-            return codes;
-        } catch (Exception e) {
-            return List.of("USD", "EUR", "RUB");
-        }
+        return List.of("USD", "EUR", "RUB", "KZT");
     }
 }
